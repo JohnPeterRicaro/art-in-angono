@@ -4,11 +4,16 @@ const TrackingBackgroundContainer = () => {
   return (
     <>
       <div className={"z-[1] absolute w-full h-full bg-[#C11221]"}></div>
-      <Image
-        src={"bg-image.png"}
-        alt="bg-image"
-        className={"z-[1] absolute w-full h-full object-center opacity-25"}
-      />
+      <div className={"z-[1] absolute w-full h-full"}>
+        <Image
+          src={"/bg-image.png"}
+          alt="bg-image"
+          layout="fill"
+          objectFit="cover"
+          objectPosition="center"
+          className={"opacity-25"}
+        />
+      </div>
     </>
   );
 };
