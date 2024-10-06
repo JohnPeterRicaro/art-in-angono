@@ -41,7 +41,7 @@ const DynamicContent = ({
   const width = useMemo(() => {
     if (windowWidth < 400) return smallSize || 150;
     return size || 259;
-  }, [windowWidth]);
+  }, [windowWidth, smallSize, size]);
 
   const ImageAndDetails = useMemo(() => {
     if (detailsComponent)
