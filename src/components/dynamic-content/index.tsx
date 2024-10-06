@@ -24,9 +24,7 @@ const DynamicContent = ({
   subheading = "",
   detailsComponent,
 }: Props) => {
-  const [windowWidth, setWindowWidth] = useState<number>(
-    window.innerWidth || 0
-  );
+  const [windowWidth, setWindowWidth] = useState<number>(0);
 
   useEffect(() => {
     const handleResize = () => {
