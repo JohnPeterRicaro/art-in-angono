@@ -14,21 +14,18 @@ const Traffic = () => {
         subheading={
           "The map currently displays in standard mode, and real-time traffic updates are not available at this time. Would you like to proceed with this setting?"
         }
-        children={
-          <>
-            <Button
-              onClick={() => router.push("/tracking/location")}
-              type={"button"}
-              variant={"default"}
-              className={
-                " w-full h-auto py-[18px] text-white text-[20px] font-semibold rounded-[33px]"
-              }
-            >
-              Proceed
-            </Button>
-          </>
-        }
-      />
+      >
+        <Button
+          onClick={() => router.push("/tracking/location")}
+          type={"button"}
+          variant={"default"}
+          className={
+            " w-full h-auto py-[18px] text-white text-[20px] font-semibold rounded-[33px]"
+          }
+        >
+          Proceed
+        </Button>
+      </DynamicContent>
     </ContentContainer>
   );
 };
