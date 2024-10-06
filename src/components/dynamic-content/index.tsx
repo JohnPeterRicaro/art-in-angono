@@ -79,7 +79,7 @@ const DynamicContent = ({
         />
       </div>
     );
-  }, [detailsComponent, windowWidth]);
+  }, [detailsComponent, windowWidth, size, smallSize]);
 
   return (
     <section

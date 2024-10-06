@@ -15,31 +15,28 @@ const Location = () => {
         }
         image={"/icons/location-art.png"}
         imageFallback={"/icons/location-art.png"}
-        children={
-          <>
-            <Button
-              onClick={() => router.push("/tracking/suggestive-system")}
-              type={"button"}
-              variant={"default"}
-              className={
-                " w-full h-auto py-[18px] text-white text-[20px] font-semibold rounded-[33px]"
-              }
-            >
-              Yes
-            </Button>
-            <Button
-              type={"button"}
-              onClick={() => router.push("/tracking")}
-              variant={"outline"}
-              className={
-                "w-full h-auto py-[18px] text-[20px] font-semibold rounded-[33px]"
-              }
-            >
-              No, thanks
-            </Button>
-          </>
-        }
-      />
+      >
+        <Button
+          onClick={() => router.push("/tracking/suggestive-system")}
+          type={"button"}
+          variant={"default"}
+          className={
+            " w-full h-auto py-[18px] text-white text-[20px] font-semibold rounded-[33px]"
+          }
+        >
+          Yes
+        </Button>
+        <Button
+          type={"button"}
+          onClick={() => router.push("/tracking")}
+          variant={"outline"}
+          className={
+            "w-full h-auto py-[18px] text-[20px] font-semibold rounded-[33px]"
+          }
+        >
+          No, thanks
+        </Button>
+      </DynamicContent>
     </ContentContainer>
   );
 };

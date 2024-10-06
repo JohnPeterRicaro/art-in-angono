@@ -23,21 +23,18 @@ const InputTime = () => {
             1 Hour
           </div>
         }
-        children={
-          <>
-            <Button
-              onClick={() => router.push("/tracking/location")}
-              type={"button"}
-              variant={"default"}
-              className={
-                " w-full h-auto py-[18px] text-white text-[20px] font-semibold rounded-[33px]"
-              }
-            >
-              Confirm
-            </Button>
-          </>
-        }
-      />
+      >
+        <Button
+          onClick={() => router.push("/tracking/location")}
+          type={"button"}
+          variant={"default"}
+          className={
+            " w-full h-auto py-[18px] text-white text-[20px] font-semibold rounded-[33px]"
+          }
+        >
+          Confirm
+        </Button>
+      </DynamicContent>
     </ContentContainer>
   );
 };
