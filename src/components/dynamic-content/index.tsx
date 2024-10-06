@@ -79,7 +79,15 @@ const DynamicContent = ({
         />
       </div>
     );
-  }, [detailsComponent, windowWidth, size, smallSize]);
+  }, [
+    detailsComponent,
+    windowWidth,
+    size,
+    smallSize,
+    imageFallback,
+    image,
+    width,
+  ]);
 
   return (
     <section
