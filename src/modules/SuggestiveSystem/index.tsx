@@ -1,11 +1,17 @@
 import ContentContainer from "@/components/content-container";
 import DynamicContent from "@/components/dynamic-content";
 import { Button } from "@/components/ui/button";
+import useTrackingContainerStore from "@/hooks/useTrackingContainerStore";
 import { useRouter } from "next/navigation";
 
 const SuggestiveSystem = () => {
+  const { setSuggestiveSystem } = useTrackingContainerStore();
   const router = useRouter();
 
+  const handleSuggestiveMapping = () => {
+    setSuggestiveSystem(true);
+    router.push("/tracking/input-time");
+  };
   return (
     <ContentContainer>
       <DynamicContent
@@ -17,7 +23,7 @@ const SuggestiveSystem = () => {
         imageFallback={"/icons/suggestive-system-art.png"}
       >
         <Button
-          onClick={() => router.push("/tracking/input-time")}
+          onClick={handleSuggestiveMapping}
           type={"button"}
           variant={"default"}
           className={
@@ -28,7 +34,10 @@ const SuggestiveSystem = () => {
         </Button>
         <Button
           type={"button"}
-          onClick={() => router.push("/tracking")}
+          onClick={() => {
+            setSuggestiveSystem(false);
+            router.push("/tracking/map");
+          }}
           variant={"outline"}
           className={
             "w-full h-auto py-[18px] text-[20px] font-semibold rounded-[33px]"
