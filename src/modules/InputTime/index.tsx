@@ -42,6 +42,7 @@ const InputTime = () => {
             >
               {Array.from({ length: 9 }).map((_, index) => (
                 <button
+                  key={index}
                   disabled={time === index + 1}
                   type={"button"}
                   onClick={() => {

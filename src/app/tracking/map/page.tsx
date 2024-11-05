@@ -11,7 +11,7 @@ const Page = () => {
     <ContentContainer>
       <GoogleMapsWrapper
         apiKey={apiKey || ""}
-        children={(google) => <MapComponent google={google} />}
+        googleApi={(google) => <MapComponent google={google} />}
       />
     </ContentContainer>
   );

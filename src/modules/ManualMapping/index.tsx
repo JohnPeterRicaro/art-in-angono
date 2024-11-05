@@ -1,10 +1,7 @@
 import SearchMuseums from "@/components/search-museums";
-import StarScore from "@/components/star-score";
 import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Dot, Landmark, Search, X } from "lucide-react";
+import { Landmark, X } from "lucide-react";
 import { Dispatch, SetStateAction, useState } from "react";
-import { twMerge } from "tailwind-merge";
 
 interface Props {
   eta: string | null;

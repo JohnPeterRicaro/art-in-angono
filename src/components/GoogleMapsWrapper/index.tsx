@@ -3,12 +3,12 @@ import React, { ReactNode, useEffect, useState } from "react";
 
 interface GoogleMapsWrapperProps {
   apiKey: string;
-  children: (google: GoogleAPI) => ReactNode;
+  googleApi: (google: GoogleAPI) => ReactNode;
 }
 
 const GoogleMapsWrapper: React.FC<GoogleMapsWrapperProps> = ({
   apiKey,
-  children,
+  googleApi,
 }) => {
   const [google, setGoogle] = useState<GoogleAPI | null>(null);
 
@@ -40,7 +40,7 @@ const GoogleMapsWrapper: React.FC<GoogleMapsWrapperProps> = ({
       </div>
     );
 
-  return <>{children(google)}</>;
+  return <>{googleApi(google)}</>;
 };
 
 export default GoogleMapsWrapper;

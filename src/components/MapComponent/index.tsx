@@ -50,6 +50,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
   } = useTrackingContainerStore();
   //state variables -end
   const router = useRouter();
+  const savedLocationStorage = localStorage.getItem("location");
 
   const proximityThreshold = 0.05; //proximity threshold is 0.05 I think this is in meters or kilometers I forgot, correct me - Programmer
 
@@ -88,7 +89,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
         setLocation(parsedSavedLocation);
       }
     }
-  }, [localStorage.getItem("location")]);
+  }, [savedLocationStorage]);
 
   //This will initialize the google maps.
   //This code is also necessary to lunch the initialization of suggestive system's routing.
@@ -130,7 +131,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
     if (location && google) {
       initializeMap();
     }
-  }, [google, location, suggestiveSystem]);
+  }, [google, location, suggestiveSystem, hasLocations]);
 
   //this will trigger when the user is near the location
   useEffect(() => {
@@ -147,7 +148,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
         router.push("/tracking/timer");
       }
     }
-  }, [location, museumsInRouteStore]);
+  }, [location, museumsInRouteStore, router]);
 
   //haversine formula: https://en.wikipedia.org/wiki/Haversine_formula
   //this will calculate the location's path.

@@ -91,6 +91,7 @@ const SearchMuseums = ({
                         museum?.photos?.[0]?.getUrl() ||
                         "/place-holder-place-icon.png"
                       }
+                      alt={`museum-icon`}
                     />
                     <div className={"space-y-[8px]"}>
                       <h1
