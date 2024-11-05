@@ -243,7 +243,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
   ) => {
     const directionsService = new google.maps.DirectionsService();
     const minTourTime = 20;
-    const maxTourTime = 60;
+    const maxTourTime = 60; //change the maximum time to your liking
     let remainingAvailableTime = availableTime * 60;
     const etaMuseums: MuseumWithDistanceAndEta[] = [];
 
