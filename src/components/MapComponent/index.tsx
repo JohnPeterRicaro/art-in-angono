@@ -117,13 +117,13 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
           setLocation(newLocation);
           localStorage.setItem("location", JSON.stringify(newLocation));
 
-          suggestiveSystem &&
-            !hasLocations &&
+          if (suggestiveSystem && !hasLocations)
             fetchMuseumsWithEta(map, newLocation);
           fetchMuseumsInAngonoRizal(map);
         });
 
-        suggestiveSystem && !hasLocations && fetchMuseumsWithEta(map, location);
+        if (suggestiveSystem && !hasLocations)
+          fetchMuseumsWithEta(map, location);
         fetchMuseumsInAngonoRizal(map);
       }
     };
