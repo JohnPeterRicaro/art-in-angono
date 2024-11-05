@@ -24,16 +24,11 @@ export interface MuseumWithDistanceAndEta
 
 const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
   const mapRef = useRef<HTMLDivElement>(null);
+  //state variables -start
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(
     null
   );
   const [isOpen, setIsOpen] = useState<boolean>(false);
-  const [museumsWithEta, setMuseumsWithEta] = useState<
-    MuseumWithDistanceAndEta[]
-  >([]);
-  const [museumsInRoute, setMuseumsInRoute] = useState<
-    MuseumWithDistanceAndEta[]
-  >([]);
   const [eta, setEta] = useState<string | null>(null);
   const [destination, setDestination] = useState<{
     lat: number;
@@ -50,22 +45,21 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
     museumsInRoute: museumsInRouteStore,
     setMuseumsInRoute: setMuseumsInRouteStore,
     setSuggestiveSystem,
+    hasLocations,
+    setHasLocations,
   } = useTrackingContainerStore();
+  //state variables -end
   const router = useRouter();
 
-  const proximityThreshold = 0.5;
+  const proximityThreshold = 0.05; //proximity threshold is 0.05 I think this is in meters or kilometers I forgot, correct me - Programmer
 
   useEffect(() => {
-    setHasLoadedMuseums(true);
-    setMuseumsInRoute(
-      museumsInRoute.filter((museum) =>
-        museumsInRouteStore.some(
-          (storeMuseum) => storeMuseum.place_id === museum.place_id
-        )
-      )
-    );
+    if (museumsInRouteStore.length > 0) {
+      setHasLoadedMuseums(true);
+    }
   }, [museumsInRouteStore]);
 
+  //each load will watch user's current position
   useEffect(() => {
     navigator.geolocation.watchPosition((position) => {
       const { latitude, longitude } = position.coords;
@@ -75,6 +69,10 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
     });
   }, []);
 
+  //when we enable location, we're going to get the saved location from the local storage.
+  //We've set the location saved on the local storage on /tracking/location.
+  //If the user is defaulted in new york, which is a bug of location service of google.
+  //We're gonna set him on a random location I chose on angono rizal.
   useEffect(() => {
     const savedLocation =
       localStorage.getItem("location") && localStorage.getItem("location");
@@ -85,54 +83,59 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
         parsedSavedLocation.lat === 38.883333 &&
         parsedSavedLocation.lng === -77
       ) {
-        setLocation({ lat: 14.5253395, lng: 121.1493303 });
+        setLocation({ lat: 14.5253306, lng: 121.1493354 });
       } else {
         setLocation(parsedSavedLocation);
       }
     }
   }, [localStorage.getItem("location")]);
 
+  //This will initialize the google maps.
+  //This code is also necessary to lunch the initialization of suggestive system's routing.
+  //This code also gets the museums inside angono rizal.
   useEffect(() => {
-    if (mapRef.current && google && location) {
-      const map = new google.maps.Map(mapRef.current, {
-        center: location,
-        zoom: 16,
-      });
+    const initializeMap = () => {
+      if (mapRef.current && google && location) {
+        const map = new google.maps.Map(mapRef.current, {
+          center: location,
+          zoom: 16,
+        });
 
-      const marker = new google.maps.Marker({
-        position: location,
-        map,
-        draggable: true,
-        title: "Drag me!",
-      });
+        const marker = new google.maps.Marker({
+          position: location,
+          map,
+          draggable: true,
+          title: "Drag me!",
+        });
 
-      marker.addListener("dragend", (event: google.maps.MapMouseEvent) => {
-        const newLocation = {
-          lat: event?.latLng?.lat() ?? location?.lat ?? 0,
-          lng: event?.latLng?.lng() ?? location?.lng ?? 0,
-        };
-        setLocation(newLocation);
-        localStorage.setItem("location", JSON.stringify(newLocation));
+        marker.addListener("dragend", (event: google.maps.MapMouseEvent) => {
+          const newLocation = {
+            lat: event?.latLng?.lat() ?? location?.lat ?? 0,
+            lng: event?.latLng?.lng() ?? location?.lng ?? 0,
+          };
+          setLocation(newLocation);
+          localStorage.setItem("location", JSON.stringify(newLocation));
 
-        if (suggestiveSystem) {
-          fetchMuseumsWithEta(map, newLocation);
-        } else {
+          suggestiveSystem &&
+            !hasLocations &&
+            fetchMuseumsWithEta(map, newLocation);
           fetchMuseumsInAngonoRizal(map);
-        }
-      });
+        });
 
-      // Initial map setup based on suggestiveSystem
-      if (suggestiveSystem) {
-        fetchMuseumsWithEta(map, location);
-      } else {
-        fetchMuseumsInAngonoRizal(map); // Ensure markers display
+        suggestiveSystem && !hasLocations && fetchMuseumsWithEta(map, location);
+        fetchMuseumsInAngonoRizal(map);
       }
+    };
+
+    if (location && google) {
+      initializeMap();
     }
   }, [google, location, suggestiveSystem]);
 
+  //this will trigger when the user is near the location
   useEffect(() => {
-    if (location && museumsInRoute.length > 0) {
-      const nextMuseum = museumsInRoute[0];
+    if (location && museumsInRouteStore.length > 0) {
+      const nextMuseum = museumsInRouteStore[0];
       const nextDestination = {
         lat: nextMuseum.geometry?.location?.lat() ?? 0,
         lng: nextMuseum.geometry?.location?.lng() ?? 0,
@@ -144,8 +147,10 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
         router.push("/tracking/timer");
       }
     }
-  }, [location, museumsInRoute]);
+  }, [location, museumsInRouteStore]);
 
+  //haversine formula: https://en.wikipedia.org/wiki/Haversine_formula
+  //this will calculate the location's path.
   const haversineDistance = (
     loc1: { lat: number; lng: number },
     loc2: { lat: number; lng: number }
@@ -165,6 +170,8 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
     return R * c;
   };
 
+  //this will fetch museums with ETA, this code is used for
+  //suggestive system.
   const fetchMuseumsWithEta = (
     map: google.maps.Map,
     userLocation: { lat: number; lng: number }
@@ -192,9 +199,11 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
     );
   };
 
+  //this will fetch every museum near in a 5km radius in angono rizal,
+  //this location is set by me.
   const fetchMuseumsInAngonoRizal = (map: google.maps.Map) => {
     const service = new google.maps.places.PlacesService(map);
-    const angonoLocation = { lat: 14.5275, lng: 121.1711 }; // angono rizal
+    const angonoLocation = { lat: 14.5275, lng: 121.1711 }; // angono rizal, random location
 
     service.nearbySearch(
       {
@@ -221,45 +230,50 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
     );
   };
 
+  //this will calculate the museums' ETAs, this will allow the system to
+  //map the locations inside of google map.
+  //We set up a minimum amout of tourTime otherwise the tourTime can be 3 minutes or less.
+  //This code considers the amount of available time we have.
+  //If the travel time takes so long, the museum that's been found will be excluded on the list
+  //of museums that we will possibly travel to.
   const calculateMuseumEta = (
     museums: google.maps.places.PlaceResult[],
     origin: { lat: number; lng: number }
   ) => {
     const directionsService = new google.maps.DirectionsService();
+    const minTourTime = 20;
+    const maxTourTime = 60;
+    let remainingAvailableTime = availableTime * 60;
     const etaMuseums: MuseumWithDistanceAndEta[] = [];
-    let accumulatedTime = 0;
 
-    const totalEta = museums.reduce((total, museum) => {
+    //sort the museums from nearest to furthest
+    const sortedMuseums = museums.sort((a, b) => {
+      const aLat = a.geometry?.location?.lat() ?? 0;
+      const aLng = a.geometry?.location?.lng() ?? 0;
+      const bLat = b.geometry?.location?.lat() ?? 0;
+      const bLng = b.geometry?.location?.lng() ?? 0;
+
+      const distanceA = Math.hypot(origin.lat - aLat, origin.lng - aLng);
+      const distanceB = Math.hypot(origin.lat - bLat, origin.lng - bLng);
+
+      return distanceA - distanceB;
+    });
+
+    //map the museums with travel time
+    //assign a tour time for each museums
+    //maximum of 1hr tour time
+    const etaPromises = sortedMuseums.map((museum) => {
       const destination = museum.geometry?.location;
-      if (!destination) return total;
-      directionsService.route(
-        {
-          origin: new google.maps.LatLng(origin.lat, origin.lng),
-          destination: new google.maps.LatLng(
-            destination.lat(),
-            destination.lng()
-          ),
-          travelMode: google.maps.TravelMode.DRIVING,
-        },
-        (result, status) => {
-          if (status === google.maps.DirectionsStatus.OK && result) {
-            const duration = result.routes[0].legs[0].duration?.value ?? 0;
-            total += duration / 60;
-          }
-        }
-      );
-      return total;
-    }, 0);
+      if (!destination) return Promise.resolve(null);
 
-    const availableTourTime = Math.max(0, availableTime * 60 - totalEta);
-    const dividedTourTime =
-      museums.length > 1
-        ? availableTourTime / museums.length
-        : availableTourTime;
+      if (
+        museum.business_status?.toString().toUpperCase() ===
+        "CLOSED_TEMPORARILY" // Skip this museum
+      ) {
+        return Promise.resolve(null);
+      }
 
-    museums.forEach((museum, index) => {
-      const destination = museum.geometry?.location;
-      if (destination) {
+      return new Promise<MuseumWithDistanceAndEta | null>((resolve) => {
         directionsService.route(
           {
             origin: new google.maps.LatLng(origin.lat, origin.lng),
@@ -272,37 +286,46 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
           (result, status) => {
             if (status === google.maps.DirectionsStatus.OK && result) {
               const distance = result.routes[0].legs[0].distance?.value ?? 0;
-              const etaInMinutes =
-                result.routes[0].legs[0].duration?.value ?? 0 / 60;
+              const travelTime =
+                (result.routes[0].legs[0].duration?.value ?? 0) / 60;
 
-              const tourTime =
-                museums.length === 1 ? availableTourTime : dividedTourTime;
+              if (travelTime + minTourTime <= remainingAvailableTime) {
+                const tourTime = Math.min(
+                  maxTourTime,
+                  Math.max(minTourTime, remainingAvailableTime - travelTime)
+                );
+                const totalMuseumTime = travelTime + tourTime;
 
-              const totalMuseumTime = etaInMinutes + tourTime;
-
-              if (accumulatedTime + totalMuseumTime <= availableTime * 60) {
-                accumulatedTime += totalMuseumTime;
+                remainingAvailableTime -= totalMuseumTime;
 
                 etaMuseums.push({
                   ...museum,
                   distance,
-                  tour_eta: { eta: etaInMinutes, tour_time: tourTime },
+                  tour_eta: { eta: travelTime, tour_time: tourTime },
                 });
+                resolve({
+                  ...museum,
+                  distance,
+                  tour_eta: { eta: travelTime, tour_time: tourTime },
+                });
+              } else {
+                resolve(null);
               }
-
-              if (index === museums.length - 1) {
-                setMuseumsWithEta(
-                  etaMuseums.sort(
-                    (a, b) => (a.distance ?? 0) - (b.distance ?? 0)
-                  )
-                );
-                setMuseumsInRouteStore(etaMuseums);
-                setMuseumsInRoute(etaMuseums);
-              }
+            } else {
+              resolve(null);
             }
           }
         );
-      }
+      });
+    });
+
+    Promise.all(etaPromises).then(() => {
+      const validMuseums = etaMuseums.filter(
+        (museum) => museum !== null
+      ) as MuseumWithDistanceAndEta[];
+
+      setHasLocations(true);
+      setMuseumsInRouteStore(validMuseums);
     });
   };
 
@@ -313,7 +336,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
         center: location,
         zoom: 16,
       });
-      const waypoints = museumsInRoute.map((museum) => ({
+      const waypoints = museumsInRouteStore.map((museum) => ({
         location: {
           lat: museum.geometry?.location?.lat() ?? 0,
           lng: museum.geometry?.location?.lng() ?? 0,
@@ -324,22 +347,24 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
     }
   };
 
+  //this will start the navigation for multiple locations
   const startMultipleNavigation = () => {
     setIsNavigating(true);
-    if (location && museumsInRoute.length > 0 && mapRef.current) {
+    if (location && museumsInRouteStore.length > 0 && mapRef.current) {
       const map = new google.maps.Map(mapRef.current, {
         center: location,
         zoom: 14,
       });
 
-      const waypoints = museumsInRoute.slice(0, -1).map((museum) => ({
+      const waypoints = museumsInRouteStore.slice(0, -1).map((museum) => ({
         location: {
           lat: museum.geometry?.location?.lat() ?? 0,
           lng: museum.geometry?.location?.lng() ?? 0,
         },
       }));
 
-      const finalDestination = museumsInRoute[museumsInRoute.length - 1];
+      const finalDestination =
+        museumsInRouteStore[museumsInRouteStore.length - 1];
       const destinationLocation = finalDestination.geometry?.location;
 
       if (destinationLocation) {
@@ -357,6 +382,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
     }
   };
 
+  //if we're on navigation mode, this will exit the navigation
   const exitNavigation = () => {
     setIsNavigating(false);
     setEta(null);
@@ -368,27 +394,23 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
     }
   };
 
+  //once the tour is done, the suggestiveSystem should be turned off
   useEffect(() => {
-    if (
-      !isNavigating &&
-      hasLoadedMuseums &&
-      museumsInRouteStore.length === 0 &&
-      museumsInRoute.length === 0
-    ) {
+    if (hasLoadedMuseums && museumsInRouteStore.length === 0) {
       setSuggestiveSystem(false);
     }
-  }, [isNavigating, museumsInRoute, setSuggestiveSystem, hasLoadedMuseums]);
+  }, [setSuggestiveSystem, hasLoadedMuseums, museumsInRouteStore]);
 
   return (
     <>
       <DraggableMenuComponent isOpen={isOpen} setIsOpen={setIsOpen}>
-        {suggestiveSystem ? (
+        {suggestiveSystem && museumsInRouteStore.length > 0 ? (
           <AutomatedMapping
-            museumsInRoute={museumsInRoute}
+            museumsInRoute={museumsInRouteStore}
             startNavigation={startNavigation}
             haversineDistance={() => haversineDistance}
             eta={eta}
-            museums={museumsWithEta}
+            museums={angonoMuseums}
             setDestination={setDestination}
             isOpen={isOpen}
             setIsOpen={setIsOpen}

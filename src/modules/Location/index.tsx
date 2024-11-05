@@ -9,17 +9,8 @@ import { useState } from "react";
 const Location = () => {
   const router = useRouter();
   const [showPrompt, setShowPrompt] = useState(false);
-  const [geoLocation, setGeoLocation] = useState({
-    loaded: false,
-    coordinates: {
-      lat: 0,
-      lng: 0,
-    },
-    locale: "",
-    countryCode: "",
-    error: {},
-  });
 
+  //save user location initially, to make the device allow access to user's location
   const handleEnableLocation = () => {
     if (navigator.geolocation) {
       navigator.permissions

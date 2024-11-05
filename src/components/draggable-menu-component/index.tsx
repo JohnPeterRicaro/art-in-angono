@@ -1,9 +1,4 @@
-import StarScore from "@/components/star-score";
-import { Button } from "@/components/ui/button";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Dot, Landmark, Search, X } from "lucide-react";
-import { Dispatch, PropsWithChildren, SetStateAction, useState } from "react";
-import { twMerge } from "tailwind-merge";
+import { Dispatch, PropsWithChildren, SetStateAction } from "react";
 
 interface Props extends PropsWithChildren {
   isOpen: boolean;

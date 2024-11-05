@@ -11,10 +11,14 @@ const Page = () => {
   const { setMuseumsInRoute, museumsInRoute } = useTrackingContainerStore();
 
   const handleNextDestination = () => {
-    museumsInRoute.length === 1 && setMuseumsInRoute([]);
-    setMuseumsInRoute(museumsInRoute.slice(1));
+    if (museumsInRoute.length > 0) {
+      const updatedMuseumsInRoute = museumsInRoute.slice(1);
 
-    router.push("/tracking/map");
+      setMuseumsInRoute(updatedMuseumsInRoute);
+
+      router.push("/tracking/map");
+    }
+    if (museumsInRoute.length === 0) router.push("/tracking/map");
   };
 
   return (

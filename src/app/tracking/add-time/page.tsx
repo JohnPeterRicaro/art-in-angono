@@ -21,45 +21,41 @@ const Page = () => {
   const { museumsInRoute, setMuseumsInRoute } = useTrackingContainerStore();
 
   const handleConfirm = () => {
-    if (museumsInRoute.length === 1) {
-      const updatedMuseum = {
-        ...museumsInRoute[0],
-        tour_eta: {
-          eta: museumsInRoute[0].tour_eta?.eta ?? 0,
-          tour_time: time,
-        },
-      };
-      setMuseumsInRoute([updatedMuseum]);
-    } else if (museumsInRoute.length > 1) {
-      const updatedMuseums = [...museumsInRoute];
+    if (museumsInRoute.length === 0) return;
 
-      updatedMuseums[0] = {
-        ...updatedMuseums[0],
-        tour_eta: {
-          eta: updatedMuseums[0].tour_eta?.eta ?? 0,
-          tour_time: time,
-        },
-      };
+    let remainingTime = time;
+    const updatedMuseums = [...museumsInRoute];
 
+    updatedMuseums[0] = {
+      ...updatedMuseums[0],
+      tour_eta: {
+        eta: updatedMuseums[0].tour_eta?.eta ?? 0,
+        tour_time: remainingTime,
+      },
+    };
+
+    while (remainingTime > 0 && updatedMuseums.length > 1) {
       const lastMuseumIndex = updatedMuseums.length - 1;
-      const lastMuseumTourTime =
-        (updatedMuseums[lastMuseumIndex].tour_eta?.tour_time ?? 0) - time;
+      const lastMuseum = updatedMuseums[lastMuseumIndex];
+      const lastMuseumTourTime = lastMuseum.tour_eta?.tour_time ?? 0;
 
-      if (lastMuseumTourTime <= 0) {
+      if (lastMuseumTourTime <= remainingTime) {
+        remainingTime -= lastMuseumTourTime;
         updatedMuseums.pop();
       } else {
         updatedMuseums[lastMuseumIndex] = {
-          ...updatedMuseums[lastMuseumIndex],
+          ...lastMuseum,
           tour_eta: {
-            eta: updatedMuseums[lastMuseumIndex].tour_eta?.eta ?? 0,
-            tour_time: lastMuseumTourTime,
+            eta: lastMuseum.tour_eta?.eta ?? 0,
+            tour_time: lastMuseumTourTime - remainingTime,
           },
         };
-      }
 
-      setMuseumsInRoute(updatedMuseums);
+        remainingTime = 0;
+      }
     }
 
+    setMuseumsInRoute(updatedMuseums);
     router.push("/tracking/timer");
   };
 
