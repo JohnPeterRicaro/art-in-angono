@@ -39,5 +39,10 @@ Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/bui
 
 https://github.com/user-attachments/assets/6b47915d-262d-4bf6-91ae-6ffcf68afe90
 
+# Updated Example Video Demo v.0.0.7
+
+
+https://github.com/user-attachments/assets/4101403a-9e73-49df-ba34-e44ec0507130
+
 
 
