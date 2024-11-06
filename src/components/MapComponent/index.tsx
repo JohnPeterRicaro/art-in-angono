@@ -42,7 +42,6 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
     MuseumWithDistanceAndEta[]
   >([]);
   const [isNavigating, setIsNavigating] = useState<boolean>(false);
-  const [hasLoadedMuseums, setHasLoadedMuseums] = useState<boolean>(false);
   const {
     suggestiveSystem,
     availableTime,
@@ -407,10 +406,10 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
 
   //once the tour is done, the suggestiveSystem should be turned off
   useEffect(() => {
-    if (hasLoadedMuseums && museumsInRouteStore.length === 0) {
+    if (museumsInRouteStore.length === 0) {
       setSuggestiveSystem(false);
     }
-  }, [setSuggestiveSystem, hasLoadedMuseums, museumsInRouteStore]);
+  }, [setSuggestiveSystem, museumsInRouteStore]);
 
   return (
     <>
