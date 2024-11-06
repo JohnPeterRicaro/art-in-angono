@@ -16,10 +16,8 @@ const Page = () => {
       Notification.requestPermission();
     }
 
-    const initialTourTime =
-      (museumsInRoute[0]?.tour_eta?.tour_time || 0) +
-      1 -
-      (museumsInRoute[0]?.tour_eta?.tour_time || 0);
+    const initialTourTime = museumsInRoute[0]?.tour_eta?.tour_time || 0;
+    //  + 1 - (museumsInRoute[0]?.tour_eta?.tour_time || 0);
     if (initialTourTime) {
       setTimeLeft(initialTourTime * 60);
     }
