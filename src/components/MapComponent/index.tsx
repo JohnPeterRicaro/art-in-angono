@@ -1,6 +1,9 @@
 "use client";
 
 import DraggableMenuComponent from "@/components/draggable-menu-component";
+import angonoPolygonCoords, {
+  getHardcodedMuseums,
+} from "@/components/MapComponent/data";
 import { Button } from "@/components/ui/button";
 import useTrackingContainerStore from "@/hooks/useTrackingContainerStore";
 import ManualMapping from "@/modules/ManualMapping";
@@ -26,7 +29,6 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<google.maps.Map | null>(null);
   const markerInstance = useRef<google.maps.Marker | null>(null);
-  const watchIdRef = useRef<number | null>(null); // Ref to store watchId
 
   // State variables - start
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(
@@ -54,51 +56,12 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
   // State variables - end
 
   const router = useRouter();
-  const proximityThreshold = 0.05; // Proximity threshold is 0.05
+  const proximityThreshold = 0.05; // proximity threshold is 0.05
 
-  // Only initialize the map once when the component is mounted
-  useEffect(() => {
-    if (google && mapRef.current && location) {
-      mapInstance.current = new google.maps.Map(mapRef.current, {
-        center: location,
-        zoom: 16,
-      });
-
-      markerInstance.current = new google.maps.Marker({
-        position: location,
-        map: mapInstance.current,
-        draggable: true,
-        title: "Drag me!",
-      });
-
-      markerInstance.current.addListener(
-        "dragend",
-        (event: google.maps.MapMouseEvent) => {
-          const newLocation = {
-            lat: event?.latLng?.lat() ?? location.lat,
-            lng: event?.latLng?.lng() ?? location.lng,
-          };
-          setLocation(newLocation);
-          localStorage.setItem("location", JSON.stringify(newLocation));
-
-          if (suggestiveSystem && !hasLocations) {
-            fetchMuseumsWithEta(mapInstance.current!, newLocation);
-          }
-          fetchMuseumsInAngonoRizal(mapInstance.current!);
-        }
-      );
-
-      if (suggestiveSystem && !hasLocations) {
-        fetchMuseumsWithEta(mapInstance.current, location);
-      }
-      fetchMuseumsInAngonoRizal(mapInstance.current);
-    }
-  }, [google, location]);
-
-  // Watch user's position and update location without re-initializing the map
+  // Watch user's position and update location
   useEffect(() => {
     if ("geolocation" in navigator) {
-      watchIdRef.current = navigator.geolocation.watchPosition(
+      navigator.geolocation.watchPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
           const newLocation = { lat: latitude, lng: longitude };
@@ -106,7 +69,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
           localStorage.setItem("location", JSON.stringify(newLocation));
 
           if (mapInstance.current && markerInstance.current) {
-            // Update the marker position and recenter the map
+            // Update the marker position and pan the map to the new location
             markerInstance.current.setPosition(newLocation);
             mapInstance.current.panTo(newLocation);
           }
@@ -116,33 +79,54 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
         }
       );
     }
+  }, []); // Empty dependency array ensures the watcher is set up only once
 
-    // return () => {
-    //   if (watchIdRef.current !== null) {
-    //     navigator.geolocation.clearWatch(watchIdRef.current);
-    //   }
-    // };
-  }, []);
-
-  // When enabling location, get the saved location from local storage
+  // Initialize the map
   useEffect(() => {
-    const savedLocation =
-      localStorage.getItem("location") && localStorage.getItem("location");
-    if (savedLocation) {
-      const parsedSavedLocation: { lat: number; lng: number } =
-        JSON.parse(savedLocation);
-      if (
-        parsedSavedLocation.lat === 38.883333 &&
-        parsedSavedLocation.lng === -77
-      ) {
-        setLocation({ lat: 14.5253306, lng: 121.1493354 });
-      } else {
-        setLocation(parsedSavedLocation);
-      }
-    }
-  }, []);
+    const initializeMap = () => {
+      if (mapRef.current && google && location) {
+        mapInstance.current = new google.maps.Map(mapRef.current, {
+          center: location,
+          zoom: 16,
+        });
 
-  //this will trigger when the user is near the location
+        markerInstance.current = new google.maps.Marker({
+          position: location,
+          map: mapInstance.current,
+          draggable: true,
+          title: "Drag me!",
+        });
+
+        markerInstance.current.addListener(
+          "dragend",
+          (event: google.maps.MapMouseEvent) => {
+            const newLocation = {
+              lat: event?.latLng?.lat() ?? location.lat,
+              lng: event?.latLng?.lng() ?? location.lng,
+            };
+            setLocation(newLocation);
+            localStorage.setItem("location", JSON.stringify(newLocation));
+
+            if (suggestiveSystem && !hasLocations) {
+              fetchMuseumsWithEta(mapInstance.current!, newLocation);
+            }
+            fetchMuseumsInAngonoRizal(mapInstance.current!);
+          }
+        );
+
+        if (suggestiveSystem && !hasLocations) {
+          fetchMuseumsWithEta(mapInstance.current, location);
+        }
+        fetchMuseumsInAngonoRizal(mapInstance.current);
+      }
+    };
+
+    if (location && google) {
+      initializeMap();
+    }
+  }, [google, location, suggestiveSystem, hasLocations]);
+
+  // Trigger when user is near the location
   useEffect(() => {
     if (location && museumsInRouteStore.length > 0) {
       const nextMuseum = museumsInRouteStore[0];
@@ -159,8 +143,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
     }
   }, [location, museumsInRouteStore, router]);
 
-  //haversine formula: https://en.wikipedia.org/wiki/Haversine_formula
-  //this will calculate the location's path.
+  // Haversine formula to calculate distance
   const haversineDistance = (
     loc1: { lat: number; lng: number },
     loc2: { lat: number; lng: number }
@@ -180,21 +163,31 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
     return R * c;
   };
 
-  //this will fetch museums with ETA, this code is used for
-  //suggestive system.
+  // Fetch museums with ETA within Angono boundaries
   const fetchMuseumsWithEta = (
     map: google.maps.Map,
     userLocation: { lat: number; lng: number }
   ) => {
     const service = new google.maps.places.PlacesService(map);
 
-    const angonoLocation = { lat: 14.5275, lng: 121.1711 };
-    const distanceToAngono = haversineDistance(userLocation, angonoLocation);
+    const angonoPolygon = new google.maps.Polygon({
+      paths: angonoPolygonCoords,
+      strokeColor: "#FF0000",
+      strokeOpacity: 0.8,
+      strokeWeight: 2,
+      fillColor: "#FF0000",
+      fillOpacity: 0.1,
+    });
 
+    angonoPolygon.setMap(map);
+
+    const angonoLocation = { lat: 14.5454, lng: 121.1576 };
+    const distanceToAngono = haversineDistance(userLocation, angonoLocation);
     const isNearbyAngono = distanceToAngono <= 5;
 
     const locationToSearch = isNearbyAngono ? angonoLocation : userLocation;
 
+    // Search nearby using Google Places API
     service.nearbySearch(
       {
         location: locationToSearch,
@@ -203,33 +196,84 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
       },
       (results, status) => {
         if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-          calculateMuseumEta(results, userLocation);
+          // Filter results to include only those within the polygon
+          const museumsWithinPolygon = results.filter((result) => {
+            if (result.geometry?.location) {
+              return google.maps.geometry.poly.containsLocation(
+                result.geometry.location,
+                angonoPolygon
+              );
+            }
+            return false;
+          });
+
+          // Add hardcoded museums to the list
+          const hardcodedMuseums = getHardcodedMuseums();
+          const allMuseums = [...museumsWithinPolygon, ...hardcodedMuseums];
+
+          // Calculate ETA for filtered museums
+          calculateMuseumEta(allMuseums, userLocation);
+        } else {
+          console.warn("No results found or error fetching museums.");
         }
       }
     );
+
+    // Add hardcoded museums as markers on the map
+    const hardcodedMuseums = getHardcodedMuseums();
+    hardcodedMuseums.forEach((museum) => {
+      new google.maps.Marker({
+        position: museum.geometry.location,
+        map,
+        title: museum.name,
+      });
+    });
   };
 
-  //this will fetch every museum near in a 5km radius in angono rizal,
-  //this location is set by me.
   const fetchMuseumsInAngonoRizal = (map: google.maps.Map) => {
     const service = new google.maps.places.PlacesService(map);
-    const angonoLocation = { lat: 14.5275, lng: 121.1711 }; // angono rizal, random location
 
+    const angonoPolygon = new google.maps.Polygon({
+      paths: angonoPolygonCoords,
+      strokeColor: "#FF0000",
+      strokeOpacity: 0.8,
+      strokeWeight: 2,
+      fillColor: "#FF0000",
+      fillOpacity: 0.1,
+    });
+
+    angonoPolygon.setMap(map);
+
+    // Search for museums within the Angono area
     service.nearbySearch(
       {
-        location: angonoLocation,
+        location: angonoPolygonCoords[0],
         radius: 5000,
         type: "museum",
       },
       (results, status) => {
         if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-          setAngonoMuseums(results as MuseumWithDistanceAndEta[]);
-          results.forEach((result) => {
+          const museumsWithinPolygon = results.filter((result) => {
             if (result.geometry?.location) {
+              return google.maps.geometry.poly.containsLocation(
+                result.geometry.location,
+                angonoPolygon
+              );
+            }
+            return false;
+          });
+
+          // Add hardcoded museums to the list
+          const hardcodedMuseums = getHardcodedMuseums();
+          const allMuseums = [...museumsWithinPolygon, ...hardcodedMuseums];
+
+          setAngonoMuseums(allMuseums as MuseumWithDistanceAndEta[]);
+          allMuseums.forEach((museum) => {
+            if (museum.geometry?.location) {
               new google.maps.Marker({
-                position: result.geometry.location,
+                position: museum.geometry.location,
                 map,
-                title: result.name,
+                title: museum.name,
               });
             }
           });
@@ -238,7 +282,18 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
         }
       }
     );
+
+    const hardcodedMuseums = getHardcodedMuseums();
+    hardcodedMuseums.forEach((museum) => {
+      new google.maps.Marker({
+        position: museum.geometry.location,
+        map,
+        title: museum.name,
+      });
+    });
   };
+
+  // Function to get hardcoded museums
 
   //this will calculate the museums' ETAs, this will allow the system to
   //map the locations inside of google map.
