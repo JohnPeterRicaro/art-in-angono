@@ -24,7 +24,11 @@ export interface MuseumWithDistanceAndEta
 
 const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
   const mapRef = useRef<HTMLDivElement>(null);
-  //state variables -start
+  const mapInstance = useRef<google.maps.Map | null>(null);
+  const markerInstance = useRef<google.maps.Marker | null>(null);
+  const watchIdRef = useRef<number | null>(null); // Ref to store watchId
+
+  // State variables - start
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(
     null
   );
@@ -48,32 +52,80 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
     hasLocations,
     setHasLocations,
   } = useTrackingContainerStore();
-  //state variables -end
+  // State variables - end
+
   const router = useRouter();
-  const savedLocationStorage = localStorage.getItem("location");
+  const proximityThreshold = 0.05; // Proximity threshold is 0.05
 
-  const proximityThreshold = 0.05; //proximity threshold is 0.05 I think this is in meters or kilometers I forgot, correct me - Programmer
-
+  // Only initialize the map once when the component is mounted
   useEffect(() => {
-    if (museumsInRouteStore.length > 0) {
-      setHasLoadedMuseums(true);
+    if (google && mapRef.current && location) {
+      mapInstance.current = new google.maps.Map(mapRef.current, {
+        center: location,
+        zoom: 16,
+      });
+
+      markerInstance.current = new google.maps.Marker({
+        position: location,
+        map: mapInstance.current,
+        draggable: true,
+        title: "Drag me!",
+      });
+
+      markerInstance.current.addListener(
+        "dragend",
+        (event: google.maps.MapMouseEvent) => {
+          const newLocation = {
+            lat: event?.latLng?.lat() ?? location.lat,
+            lng: event?.latLng?.lng() ?? location.lng,
+          };
+          setLocation(newLocation);
+          localStorage.setItem("location", JSON.stringify(newLocation));
+
+          if (suggestiveSystem && !hasLocations) {
+            fetchMuseumsWithEta(mapInstance.current!, newLocation);
+          }
+          fetchMuseumsInAngonoRizal(mapInstance.current!);
+        }
+      );
+
+      if (suggestiveSystem && !hasLocations) {
+        fetchMuseumsWithEta(mapInstance.current, location);
+      }
+      fetchMuseumsInAngonoRizal(mapInstance.current);
     }
-  }, [museumsInRouteStore]);
+  }, [google, location]);
 
-  //each load will watch user's current position
+  // Watch user's position and update location without re-initializing the map
   useEffect(() => {
-    navigator.geolocation.watchPosition((position) => {
-      const { latitude, longitude } = position.coords;
-      const newLocation = { lat: latitude, lng: longitude };
-      setLocation(newLocation);
-      localStorage.setItem("location", JSON.stringify(newLocation));
-    });
+    if ("geolocation" in navigator) {
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          const newLocation = { lat: latitude, lng: longitude };
+          setLocation(newLocation);
+          localStorage.setItem("location", JSON.stringify(newLocation));
+
+          if (mapInstance.current && markerInstance.current) {
+            // Update the marker position and recenter the map
+            markerInstance.current.setPosition(newLocation);
+            mapInstance.current.panTo(newLocation);
+          }
+        },
+        (error) => {
+          console.error("Error watching position:", error);
+        }
+      );
+    }
+
+    // return () => {
+    //   if (watchIdRef.current !== null) {
+    //     navigator.geolocation.clearWatch(watchIdRef.current);
+    //   }
+    // };
   }, []);
 
-  //when we enable location, we're going to get the saved location from the local storage.
-  //We've set the location saved on the local storage on /tracking/location.
-  //If the user is defaulted in new york, which is a bug of location service of google.
-  //We're gonna set him on a random location I chose on angono rizal.
+  // When enabling location, get the saved location from local storage
   useEffect(() => {
     const savedLocation =
       localStorage.getItem("location") && localStorage.getItem("location");
@@ -89,49 +141,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
         setLocation(parsedSavedLocation);
       }
     }
-  }, [savedLocationStorage]);
-
-  //This will initialize the google maps.
-  //This code is also necessary to lunch the initialization of suggestive system's routing.
-  //This code also gets the museums inside angono rizal.
-  useEffect(() => {
-    const initializeMap = () => {
-      if (mapRef.current && google && location) {
-        const map = new google.maps.Map(mapRef.current, {
-          center: location,
-          zoom: 16,
-        });
-
-        const marker = new google.maps.Marker({
-          position: location,
-          map,
-          draggable: true,
-          title: "Drag me!",
-        });
-
-        marker.addListener("dragend", (event: google.maps.MapMouseEvent) => {
-          const newLocation = {
-            lat: event?.latLng?.lat() ?? location?.lat ?? 0,
-            lng: event?.latLng?.lng() ?? location?.lng ?? 0,
-          };
-          setLocation(newLocation);
-          localStorage.setItem("location", JSON.stringify(newLocation));
-
-          if (suggestiveSystem && !hasLocations)
-            fetchMuseumsWithEta(map, newLocation);
-          fetchMuseumsInAngonoRizal(map);
-        });
-
-        if (suggestiveSystem && !hasLocations)
-          fetchMuseumsWithEta(map, location);
-        fetchMuseumsInAngonoRizal(map);
-      }
-    };
-
-    if (location && google) {
-      initializeMap();
-    }
-  }, [google, location, suggestiveSystem, hasLocations]);
+  }, []);
 
   //this will trigger when the user is near the location
   useEffect(() => {
