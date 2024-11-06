@@ -66,6 +66,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
       const { latitude, longitude } = position.coords;
       const newLocation = { lat: latitude, lng: longitude };
       setLocation(newLocation);
+      localStorage.setItem("location", JSON.stringify(newLocation));
     });
   }, []);
 
@@ -95,14 +96,14 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
   //This code also gets the museums inside angono rizal.
   useEffect(() => {
     const initializeMap = () => {
-      if (mapRef.current && savedLocationStorage && google) {
+      if (mapRef.current && google && location) {
         const map = new google.maps.Map(mapRef.current, {
-          center: JSON.parse(savedLocationStorage),
+          center: location,
           zoom: 16,
         });
 
         const marker = new google.maps.Marker({
-          position: JSON.parse(savedLocationStorage),
+          position: location,
           map,
           draggable: true,
           title: "Drag me!",
@@ -114,6 +115,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
             lng: event?.latLng?.lng() ?? location?.lng ?? 0,
           };
           setLocation(newLocation);
+          localStorage.setItem("location", JSON.stringify(newLocation));
 
           if (suggestiveSystem && !hasLocations)
             fetchMuseumsWithEta(map, newLocation);
@@ -121,7 +123,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
         });
 
         if (suggestiveSystem && !hasLocations)
-          fetchMuseumsWithEta(map, JSON.parse(savedLocationStorage));
+          fetchMuseumsWithEta(map, location);
         fetchMuseumsInAngonoRizal(map);
       }
     };
@@ -129,7 +131,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
     if (location && google) {
       initializeMap();
     }
-  }, [google, savedLocationStorage, suggestiveSystem, hasLocations]);
+  }, [google, location, suggestiveSystem, hasLocations]);
 
   //this will trigger when the user is near the location
   useEffect(() => {

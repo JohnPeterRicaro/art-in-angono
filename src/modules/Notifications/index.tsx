@@ -11,24 +11,33 @@ const Notifications = () => {
   const { setNotifications } = useTrackingContainerStore();
 
   const handleEnableNotifications = async () => {
-    const permission = await Notification.requestPermission();
+    try {
+      const permission = await Notification.requestPermission();
 
-    if (permission === "granted") {
-      showNotification("Notifications Enabled", {
-        body: "You will now receive updates about nearby museums!",
-        icon: "/icons/cellphone-art.png",
-      });
-      setNotifications(true);
-      router.push("/tracking/traffic");
-    } else if (permission === "denied") {
-      alert(
-        "Notifications permission is blocked. Please enable notifications in your browser settings if you want to receive updates."
-      );
-      setNotifications(false);
-      router.push("/tracking");
-    } else {
-      alert("Please grant permission to enable notifications.");
-      router.push("/tracking");
+      if (permission === "granted") {
+        showNotification("Notifications Enabled", {
+          body: "You will now receive updates about nearby museums!",
+          icon: "/icons/cellphone-art.png",
+        });
+
+        setNotifications(true);
+
+        setTimeout(() => {
+          router.push("/tracking/traffic");
+        }, 100);
+      } else if (permission === "denied") {
+        alert(
+          "Notifications permission is blocked. Please enable notifications in your browser settings if you want to receive updates."
+        );
+        setNotifications(false);
+        router.push("/tracking");
+      } else {
+        alert("Please grant permission to enable notifications.");
+        router.push("/tracking");
+      }
+    } catch (error) {
+      console.error("An error occurred while enabling notifications:", error);
+      alert("An error occurred. Please try again later.");
     }
   };
 
