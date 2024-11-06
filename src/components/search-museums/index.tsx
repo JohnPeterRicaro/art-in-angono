@@ -163,15 +163,6 @@ const SearchMuseums = ({
                         >
                           Directions
                         </Button>
-                        <Button
-                          type={"button"}
-                          variant={"outline"}
-                          className={
-                            "h-auto py-[5px] px-[33px] border border-[#0094FF] rounded-[14.5px] text-[#0094FF] hover:border-[#0094FF]/75 hover:text-[#0094FF]/75"
-                          }
-                        >
-                          Save
-                        </Button>
                       </div>
                     </div>
                   </div>
