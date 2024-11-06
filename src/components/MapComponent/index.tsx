@@ -81,15 +81,39 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
     }
   }, []); // Empty dependency array ensures the watcher is set up only once
 
-  // Initialize the map
+  // Initialize the map only once when the component mounts
   useEffect(() => {
     const initializeMap = () => {
-      if (mapRef.current && google && location) {
+      if (mapRef.current && google) {
         mapInstance.current = new google.maps.Map(mapRef.current, {
-          center: location,
           zoom: 16,
         });
+      }
+    };
 
+    if (google) {
+      initializeMap();
+    }
+  }, [google]);
+
+  // Update the map and fetch museums when location changes
+  useEffect(() => {
+    if (location && mapInstance.current) {
+      // Pan the map to the new location
+      mapInstance.current.panTo(location);
+
+      // Fetch museums based on updated location if conditions are met
+      if (suggestiveSystem && !hasLocations) {
+        fetchMuseumsWithEta(mapInstance.current, location);
+      }
+      fetchMuseumsInAngonoRizal(mapInstance.current);
+    }
+  }, [location, suggestiveSystem, hasLocations]);
+
+  // Marker setup - added to keep marker management isolated
+  useEffect(() => {
+    if (mapInstance.current && location) {
+      if (!markerInstance.current) {
         markerInstance.current = new google.maps.Marker({
           position: location,
           map: mapInstance.current,
@@ -100,31 +124,27 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
         markerInstance.current.addListener(
           "dragend",
           (event: google.maps.MapMouseEvent) => {
-            const newLocation = {
-              lat: event?.latLng?.lat() ?? location.lat,
-              lng: event?.latLng?.lng() ?? location.lng,
-            };
-            setLocation(newLocation);
-            localStorage.setItem("location", JSON.stringify(newLocation));
+            if (event?.latLng) {
+              const newLocation = {
+                lat: event.latLng.lat(),
+                lng: event.latLng.lng(),
+              };
+              setLocation(newLocation);
+              localStorage.setItem("location", JSON.stringify(newLocation));
 
-            if (suggestiveSystem && !hasLocations) {
-              fetchMuseumsWithEta(mapInstance.current!, newLocation);
+              if (suggestiveSystem && !hasLocations) {
+                fetchMuseumsWithEta(mapInstance.current!, newLocation);
+              }
+              fetchMuseumsInAngonoRizal(mapInstance.current!);
             }
-            fetchMuseumsInAngonoRizal(mapInstance.current!);
           }
         );
-
-        if (suggestiveSystem && !hasLocations) {
-          fetchMuseumsWithEta(mapInstance.current, location);
-        }
-        fetchMuseumsInAngonoRizal(mapInstance.current);
+      } else {
+        // Update marker position if it already exists
+        markerInstance.current.setPosition(location);
       }
-    };
-
-    if (location && google) {
-      initializeMap();
     }
-  }, [google, location, suggestiveSystem, hasLocations]);
+  }, [location, suggestiveSystem, hasLocations]);
 
   // Trigger when user is near the location
   useEffect(() => {
