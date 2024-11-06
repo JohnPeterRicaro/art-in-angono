@@ -22,10 +22,6 @@ const Notifications = () => {
       });
 
       if (permissionStatus.state === "granted") {
-        await showNotification("Notifications Enabled", {
-          body: "You already have notifications enabled.",
-          icon: "/icons/cellphone-art.png",
-        });
         setNotifications(true);
         router.push("/tracking/traffic");
         return;
@@ -34,20 +30,17 @@ const Notifications = () => {
       const permission = await Notification.requestPermission();
 
       if (permission === "granted") {
+        setNotifications(true);
+
+        router.push("/tracking/traffic");
+
         const registration = await navigator.serviceWorker.register(
           "/service-worker.js"
         );
-
         await registration.showNotification("Notifications Enabled", {
           body: "You will now receive updates about nearby museums!",
           icon: "/icons/cellphone-art.png",
         });
-
-        setNotifications(true);
-
-        setTimeout(() => {
-          router.push("/tracking/traffic");
-        }, 100);
       } else if (permission === "denied") {
         alert(
           "Notifications permission is blocked. Please enable notifications in your browser settings if you want to receive updates."
@@ -61,20 +54,6 @@ const Notifications = () => {
     } catch (error) {
       console.error("An error occurred while enabling notifications:", error);
       alert("An error occurred. Please try again later.");
-    }
-  };
-
-  const showNotification = async (
-    title: string,
-    options: NotificationOptions
-  ) => {
-    if ("Notification" in window && navigator.serviceWorker) {
-      const registration = await navigator.serviceWorker.ready;
-      registration.showNotification(title, options);
-    } else if ("Notification" in window) {
-      new Notification(title, options);
-    } else {
-      console.error("Browser does not support notifications.");
     }
   };
 
