@@ -12,10 +12,33 @@ const Notifications = () => {
 
   const handleEnableNotifications = async () => {
     try {
+      if (!("Notification" in window) || !navigator.serviceWorker) {
+        alert("Your browser does not support notifications.");
+        return;
+      }
+
+      const permissionStatus = await navigator.permissions.query({
+        name: "notifications" as PermissionName,
+      });
+
+      if (permissionStatus.state === "granted") {
+        await showNotification("Notifications Enabled", {
+          body: "You already have notifications enabled.",
+          icon: "/icons/cellphone-art.png",
+        });
+        setNotifications(true);
+        router.push("/tracking/traffic");
+        return;
+      }
+
       const permission = await Notification.requestPermission();
 
       if (permission === "granted") {
-        showNotification("Notifications Enabled", {
+        const registration = await navigator.serviceWorker.register(
+          "/service-worker.js"
+        );
+
+        await registration.showNotification("Notifications Enabled", {
           body: "You will now receive updates about nearby museums!",
           icon: "/icons/cellphone-art.png",
         });
@@ -41,8 +64,14 @@ const Notifications = () => {
     }
   };
 
-  const showNotification = (title: string, options: NotificationOptions) => {
-    if ("Notification" in window) {
+  const showNotification = async (
+    title: string,
+    options: NotificationOptions
+  ) => {
+    if ("Notification" in window && navigator.serviceWorker) {
+      const registration = await navigator.serviceWorker.ready;
+      registration.showNotification(title, options);
+    } else if ("Notification" in window) {
       new Notification(title, options);
     } else {
       console.error("Browser does not support notifications.");
