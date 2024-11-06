@@ -44,6 +44,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
     MuseumWithDistanceAndEta[]
   >([]);
   const [isNavigating, setIsNavigating] = useState<boolean>(false);
+  const [hasLoadedMuseums, setHasLoadedMuseums] = useState<boolean>(false);
   const {
     suggestiveSystem,
     availableTime,
@@ -58,6 +59,12 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
   const router = useRouter();
   const proximityThreshold = 0.05; // proximity threshold is 0.05
 
+  useEffect(() => {
+    if (museumsInRouteStore.length > 0) {
+      setHasLoadedMuseums(true);
+    }
+  }, [museumsInRouteStore]);
+
   // Watch user's position and update location
   useEffect(() => {
     if ("geolocation" in navigator) {
@@ -65,7 +72,11 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
         (position) => {
           const { latitude, longitude } = position.coords;
           const newLocation = { lat: latitude, lng: longitude };
-          setLocation(newLocation);
+          if (newLocation.lat === 38.883333 && newLocation.lng === -77) {
+            setLocation({ lat: 14.525343, lng: 121.149372 });
+          } else {
+            setLocation(newLocation);
+          }
           localStorage.setItem("location", JSON.stringify(newLocation));
 
           if (mapInstance.current && markerInstance.current) {
@@ -88,21 +99,26 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
         mapInstance.current = new google.maps.Map(mapRef.current, {
           zoom: 16,
         });
+        if (
+          suggestiveSystem &&
+          mapInstance.current &&
+          !hasLocations &&
+          location
+        )
+          fetchMuseumsWithEta(mapInstance.current, location);
+        if (mapInstance) fetchMuseumsInAngonoRizal(mapInstance.current);
       }
     };
 
     if (google) {
       initializeMap();
     }
-  }, [google]);
+  }, [google, suggestiveSystem, hasLocations, location]);
 
-  // Update the map and fetch museums when location changes
   useEffect(() => {
     if (location && mapInstance.current) {
-      // Pan the map to the new location
       mapInstance.current.panTo(location);
 
-      // Fetch museums based on updated location if conditions are met
       if (suggestiveSystem && !hasLocations) {
         fetchMuseumsWithEta(mapInstance.current, location);
       }
@@ -110,7 +126,6 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
     }
   }, [location, suggestiveSystem, hasLocations]);
 
-  // Marker setup - added to keep marker management isolated
   useEffect(() => {
     if (mapInstance.current && location) {
       if (!markerInstance.current) {
@@ -131,11 +146,6 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
               };
               setLocation(newLocation);
               localStorage.setItem("location", JSON.stringify(newLocation));
-
-              if (suggestiveSystem && !hasLocations) {
-                fetchMuseumsWithEta(mapInstance.current!, newLocation);
-              }
-              fetchMuseumsInAngonoRizal(mapInstance.current!);
             }
           }
         );
@@ -193,10 +203,10 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
     const angonoPolygon = new google.maps.Polygon({
       paths: angonoPolygonCoords,
       strokeColor: "#FF0000",
-      strokeOpacity: 0.8,
+      strokeOpacity: 0.1,
       strokeWeight: 2,
       fillColor: "#FF0000",
-      fillOpacity: 0.1,
+      fillOpacity: 0,
     });
 
     angonoPolygon.setMap(map);
@@ -207,11 +217,15 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
 
     const locationToSearch = isNearbyAngono ? angonoLocation : userLocation;
 
-    // Search nearby using Google Places API
+    const bounds = new google.maps.LatLngBounds();
+    angonoPolygonCoords.forEach((coord) => {
+      bounds.extend(coord);
+    });
+
     service.nearbySearch(
       {
         location: locationToSearch,
-        radius: 5000,
+        radius: 5000, // Adjust radius as needed
         type: "museum",
       },
       (results, status) => {
@@ -231,8 +245,14 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
           const hardcodedMuseums = getHardcodedMuseums();
           const allMuseums = [...museumsWithinPolygon, ...hardcodedMuseums];
 
-          // Calculate ETA for filtered museums
-          calculateMuseumEta(allMuseums, userLocation);
+          // Ensure we have at least one museum before calculating ETA
+          if (allMuseums.length > 0) {
+            calculateMuseumEta(allMuseums, userLocation);
+          } else {
+            console.warn(
+              "No museums found within the polygon or in hardcoded data."
+            );
+          }
         } else {
           console.warn("No results found or error fetching museums.");
         }
@@ -242,11 +262,13 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
     // Add hardcoded museums as markers on the map
     const hardcodedMuseums = getHardcodedMuseums();
     hardcodedMuseums.forEach((museum) => {
-      new google.maps.Marker({
-        position: museum.geometry.location,
-        map,
-        title: museum.name,
-      });
+      if (museum.geometry?.location) {
+        new google.maps.Marker({
+          position: museum.geometry.location,
+          map,
+          title: museum.name,
+        });
+      }
     });
   };
 
@@ -256,10 +278,10 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
     const angonoPolygon = new google.maps.Polygon({
       paths: angonoPolygonCoords,
       strokeColor: "#FF0000",
-      strokeOpacity: 0.8,
+      strokeOpacity: 0.1,
       strokeWeight: 2,
       fillColor: "#FF0000",
-      fillOpacity: 0.1,
+      fillOpacity: 0,
     });
 
     angonoPolygon.setMap(map);
@@ -481,10 +503,10 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
 
   //once the tour is done, the suggestiveSystem should be turned off
   useEffect(() => {
-    if (museumsInRouteStore.length === 0) {
+    if (hasLoadedMuseums && museumsInRouteStore.length === 0) {
       setSuggestiveSystem(false);
     }
-  }, [setSuggestiveSystem, museumsInRouteStore]);
+  }, [setSuggestiveSystem, hasLoadedMuseums, museumsInRouteStore]);
 
   return (
     <>

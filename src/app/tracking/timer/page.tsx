@@ -10,7 +10,6 @@ const Page = () => {
   const { museumsInRoute } = useTrackingContainerStore();
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const router = useRouter();
-  console.log("museums in route:", museumsInRoute);
 
   useEffect(() => {
     if (Notification.permission === "default") {
