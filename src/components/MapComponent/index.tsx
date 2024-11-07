@@ -75,7 +75,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
           if (newLocation.lat === 38.883333 && newLocation.lng === -77) {
             setLocation({ lat: 14.525343, lng: 121.149372 });
           } else {
-            setLocation({ lat: 14.525343, lng: 121.149372 });
+            setLocation(newLocation);
           }
           localStorage.setItem("location", JSON.stringify(newLocation));
 
