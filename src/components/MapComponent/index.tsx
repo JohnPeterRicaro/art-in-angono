@@ -68,7 +68,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
   // Watch user's position and update location
   useEffect(() => {
     if ("geolocation" in navigator) {
-      navigator.geolocation.watchPosition(
+      navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
           const newLocation = { lat: latitude, lng: longitude };
