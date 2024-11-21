@@ -92,6 +92,7 @@ const SearchMuseums = ({
               const isLastIndex = index === array.length - 1;
               return (
                 <div
+                  key={index}
                   className={
                     "w-full flex flex-col justify-center items-center gap-2"
                   }
