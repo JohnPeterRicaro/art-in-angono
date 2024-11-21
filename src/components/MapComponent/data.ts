@@ -103,4 +103,17 @@ export const getHardcodedMuseums = () => {
   ];
 };
 
+export const hardcodedMuseumNames = [
+  "Angkla Art Gallery",
+  "Balagtas Gallery",
+  "Balaw-Balaw Art Gallery",
+  "Blanco Family Museum",
+  "Giant Dwarf Art Space",
+  "House of Botong Francisco",
+  "Nemiranda Arthouse",
+  "Nono Museum",
+  "Angono Petroglyphs",
+  "Kuta Artspace",
+];
+
 export default angonoPolygonCoords;

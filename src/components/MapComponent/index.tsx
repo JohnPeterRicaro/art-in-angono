@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import useTrackingContainerStore from "@/hooks/useTrackingContainerStore";
 import ManualMapping from "@/modules/ManualMapping";
 import AutomatedMapping from "@/modules/SuggestiveSystem/AutomatedMapping";
-import { drawRoute } from "@/utils/drawRoute";
+import { fetchHardcodedMuseums } from "@/utils/fetchHardCodedMuseums";
 import { useRouter } from "next/navigation";
 import React, { useEffect, useRef, useState } from "react";
 
@@ -35,15 +35,9 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
     null
   );
   const [isOpen, setIsOpen] = useState<boolean>(false);
-  const [eta, setEta] = useState<string | null>(null);
-  const [destination, setDestination] = useState<{
-    lat: number;
-    lng: number;
-  } | null>(null);
   const [angonoMuseums, setAngonoMuseums] = useState<
     MuseumWithDistanceAndEta[]
   >([]);
-  const [isNavigating, setIsNavigating] = useState<boolean>(false);
   const [hasLoadedMuseums, setHasLoadedMuseums] = useState<boolean>(false);
   const {
     suggestiveSystem,
@@ -55,6 +49,14 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
     setHasLocations,
   } = useTrackingContainerStore();
   // State variables - end
+
+  const directionsRenderer = useRef<google.maps.DirectionsRenderer | null>(
+    null
+  );
+
+  const isNavigationActive = !!(
+    directionsRenderer.current && directionsRenderer.current.getMap()
+  );
 
   const router = useRouter();
   const proximityThreshold = 0.05; // proximity threshold is 0.05
@@ -68,12 +70,12 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
   // Watch user's position and update location
   useEffect(() => {
     if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
+      navigator.geolocation.watchPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
           const newLocation = { lat: latitude, lng: longitude };
           if (newLocation.lat === 38.883333 && newLocation.lng === -77) {
-            setLocation({ lat: 14.525343, lng: 121.149372 });
+            setLocation({ lat: 14.599748, lng: 121.0100337 });
           } else {
             setLocation(newLocation);
           }
@@ -113,7 +115,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
     if (google) {
       initializeMap();
     }
-  }, [google, suggestiveSystem, hasLocations, location]);
+  }, [suggestiveSystem]);
 
   useEffect(() => {
     if (location && mapInstance.current) {
@@ -129,6 +131,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
   useEffect(() => {
     if (mapInstance.current && location) {
       if (!markerInstance.current) {
+        // Create marker only once
         markerInstance.current = new google.maps.Marker({
           position: location,
           map: mapInstance.current,
@@ -136,6 +139,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
           title: "Drag me!",
         });
 
+        // Add dragend listener to update location state
         markerInstance.current.addListener(
           "dragend",
           (event: google.maps.MapMouseEvent) => {
@@ -153,8 +157,11 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
         // Update marker position if it already exists
         markerInstance.current.setPosition(location);
       }
+
+      // Pan the map to the new location
+      mapInstance.current.panTo(location);
     }
-  }, [location, suggestiveSystem, hasLocations]);
+  }, [location]); // Trigger this effect only when `location` changes
 
   // Trigger when user is near the location
   useEffect(() => {
@@ -272,7 +279,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
     });
   };
 
-  const fetchMuseumsInAngonoRizal = (map: google.maps.Map) => {
+  const fetchMuseumsInAngonoRizal = async (map: google.maps.Map) => {
     const service = new google.maps.places.PlacesService(map);
 
     const angonoPolygon = new google.maps.Polygon({
@@ -285,6 +292,26 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
     });
 
     angonoPolygon.setMap(map);
+
+    const hardcodedMuseums = await fetchHardcodedMuseums(google, map);
+
+    // Custom icon for markers
+    const customIcon = {
+      url: "/icons/museum-icon.png", // Replace with your custom icon URL
+      scaledSize: new google.maps.Size(40, 40), // Adjust size
+    };
+
+    // Add hardcoded museums as markers on the map
+    hardcodedMuseums.forEach((museum) => {
+      if (museum.geometry?.location) {
+        new google.maps.Marker({
+          position: museum.geometry.location,
+          map,
+          title: museum.name,
+          icon: customIcon, // Use the custom icon
+        });
+      }
+    });
 
     // Search for museums within the Angono area
     service.nearbySearch(
@@ -305,34 +332,26 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
             return false;
           });
 
-          // Add hardcoded museums to the list
-          const hardcodedMuseums = getHardcodedMuseums();
-          const allMuseums = [...museumsWithinPolygon, ...hardcodedMuseums];
-
-          setAngonoMuseums(allMuseums as MuseumWithDistanceAndEta[]);
-          allMuseums.forEach((museum) => {
+          museumsWithinPolygon.forEach((museum) => {
             if (museum.geometry?.location) {
               new google.maps.Marker({
                 position: museum.geometry.location,
                 map,
                 title: museum.name,
+                icon: customIcon,
               });
             }
           });
+
+          setAngonoMuseums([
+            ...museumsWithinPolygon,
+            ...hardcodedMuseums,
+          ] as MuseumWithDistanceAndEta[]);
         } else {
           console.warn("No results found or error fetching museums.");
         }
       }
     );
-
-    const hardcodedMuseums = getHardcodedMuseums();
-    hardcodedMuseums.forEach((museum) => {
-      new google.maps.Marker({
-        position: museum.geometry.location,
-        map,
-        title: museum.name,
-      });
-    });
   };
 
   // Function to get hardcoded museums
@@ -436,38 +455,45 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
     });
   };
 
-  const startNavigation = () => {
-    setIsNavigating(true);
-    if (location && destination && mapRef.current) {
-      const map = new google.maps.Map(mapRef.current, {
-        center: location,
-        zoom: 16,
-      });
-      const waypoints = museumsInRouteStore.map((museum) => ({
-        location: {
-          lat: museum.geometry?.location?.lat() ?? 0,
-          lng: museum.geometry?.location?.lng() ?? 0,
-        },
-      }));
+  // const startNavigation = () => {
+  //   setIsNavigating(true);
+  //   if (location && destination && mapRef.current) {
+  //     const map = new google.maps.Map(mapRef.current, {
+  //       center: location,
+  //       zoom: 16,
+  //     });
+  //     const waypoints = museumsInRouteStore.map((museum) => ({
+  //       location: {
+  //         lat: museum.geometry?.location?.lat() ?? 0,
+  //         lng: museum.geometry?.location?.lng() ?? 0,
+  //       },
+  //     }));
 
-      drawRoute(map, location, destination, waypoints, setEta);
-    }
-  };
+  //     drawRoute(map, location, destination, waypoints, setEta);
+  //   }
+  // };
 
   //this will start the navigation for multiple locations
   const startMultipleNavigation = () => {
-    setIsNavigating(true);
     if (location && museumsInRouteStore.length > 0 && mapRef.current) {
-      const map = new google.maps.Map(mapRef.current, {
-        center: location,
-        zoom: 14,
-      });
+      const map = mapInstance.current!;
+      const directionsService = new google.maps.DirectionsService();
+
+      // If there's already a DirectionsRenderer, clear the route
+      if (!directionsRenderer.current) {
+        directionsRenderer.current = new google.maps.DirectionsRenderer({
+          map,
+          suppressMarkers: false,
+          draggable: false,
+        });
+      }
 
       const waypoints = museumsInRouteStore.slice(0, -1).map((museum) => ({
         location: {
           lat: museum.geometry?.location?.lat() ?? 0,
           lng: museum.geometry?.location?.lng() ?? 0,
         },
+        stopover: true,
       }));
 
       const finalDestination =
@@ -475,15 +501,23 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
       const destinationLocation = finalDestination.geometry?.location;
 
       if (destinationLocation) {
-        drawRoute(
-          map,
-          location,
+        directionsService.route(
           {
-            lat: destinationLocation.lat(),
-            lng: destinationLocation.lng(),
+            origin: location,
+            destination: {
+              lat: destinationLocation.lat(),
+              lng: destinationLocation.lng(),
+            },
+            waypoints,
+            travelMode: google.maps.TravelMode.DRIVING,
           },
-          waypoints,
-          setEta
+          (result, status) => {
+            if (status === google.maps.DirectionsStatus.OK) {
+              directionsRenderer.current?.setDirections(result);
+            } else {
+              console.error("Error fetching directions:", status);
+            }
+          }
         );
       }
     }
@@ -491,13 +525,15 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
 
   //if we're on navigation mode, this will exit the navigation
   const exitNavigation = () => {
-    setIsNavigating(false);
-    setEta(null);
+    if (directionsRenderer.current) {
+      directionsRenderer.current.setMap(null); // Remove the directions from the map
+      directionsRenderer.current = null; // Reset the reference
+    }
     if (mapRef.current) {
-      new google.maps.Map(mapRef.current, {
-        center: location,
-        zoom: 16,
-      });
+      mapInstance.current?.setCenter(
+        location || { lat: 14.599512, lng: 120.984222 }
+      ); // Reset map center
+      mapInstance.current?.setZoom(16);
     }
   };
 
@@ -514,27 +550,21 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
         {suggestiveSystem && museumsInRouteStore.length > 0 ? (
           <AutomatedMapping
             museumsInRoute={museumsInRouteStore}
-            startNavigation={startNavigation}
             haversineDistance={() => haversineDistance}
-            eta={eta}
-            museums={angonoMuseums}
-            setDestination={setDestination}
+            angonoMuseums={angonoMuseums}
             isOpen={isOpen}
             setIsOpen={setIsOpen}
             startMultipleNavigation={startMultipleNavigation}
           />
         ) : (
           <ManualMapping
-            eta={eta}
-            museums={angonoMuseums}
-            setDestination={setDestination}
+            angonoMuseums={angonoMuseums}
             isOpen={isOpen}
-            setIsOpen={setIsOpen}
-            startNavigation={startNavigation}
+            startMultipleNavigation={startMultipleNavigation}
           />
         )}
       </DraggableMenuComponent>
-      {isNavigating && (
+      {isNavigationActive && (
         <Button
           type={"button"}
           variant={"destructive"}
@@ -544,6 +574,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
           Exit Navigation
         </Button>
       )}
+
       <div ref={mapRef} style={{ width: "100%", height: "100vh" }}></div>
     </>
   );
