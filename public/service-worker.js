@@ -5,7 +5,6 @@ const CACHE_NAME = 'art-in-angono-v1';
 const urlsToCache = [
   '/',
   '/manifest.json',
-  '/art-in-angono-logo.png',
   '/icons/icon-72x72.png',
   '/icons/icon-96x96.png',
   '/icons/icon-128x128.png',
@@ -20,10 +19,18 @@ const urlsToCache = [
 self.addEventListener('install', (event) => {
   console.log('[Service Worker] Install');
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      console.log('[Service Worker] Caching all required resources');
-      return cache.addAll(urlsToCache);
-    })
+    caches.open(CACHE_NAME)
+      .then((cache) => {
+        console.log('[Service Worker] Caching all required resources');
+        // Cache each URL individually to handle failures gracefully
+        return Promise.all(
+          urlsToCache.map(url => {
+            return cache.add(url).catch(error => {
+              console.error(`[Service Worker] Failed to cache ${url}:`, error);
+            });
+          })
+        );
+      })
   );
   // Activate immediately
   self.skipWaiting();
@@ -51,31 +58,43 @@ self.addEventListener('activate', (event) => {
 // Fetch event - serve from cache first, then network
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      // Return cached response if found
-      if (response) {
-        return response;
-      }
-
-      // Clone the request because it can only be used once
-      const fetchRequest = event.request.clone();
-
-      // Make network request and cache the response
-      return fetch(fetchRequest).then((response) => {
-        // Check if we received a valid response
-        if (!response || response.status !== 200 || response.type !== 'basic') {
+    caches.match(event.request)
+      .then((response) => {
+        // Return cached response if found
+        if (response) {
           return response;
         }
 
-        // Clone the response because it can only be used once
-        const responseToCache = response.clone();
+        // Clone the request because it can only be used once
+        const fetchRequest = event.request.clone();
 
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
+        // Make network request and cache the response
+        return fetch(fetchRequest)
+          .then((response) => {
+            // Check if we received a valid response
+            if (!response || response.status !== 200 || response.type !== 'basic') {
+              return response;
+            }
 
-        return response;
-      });
-    })
+            // Clone the response because it can only be used once
+            const responseToCache = response.clone();
+
+            // Cache the fetched response
+            caches.open(CACHE_NAME)
+              .then((cache) => {
+                cache.put(event.request, responseToCache);
+              })
+              .catch(error => {
+                console.error('[Service Worker] Failed to cache response:', error);
+              });
+
+            return response;
+          })
+          .catch(error => {
+            console.error('[Service Worker] Fetch failed:', error);
+            // You might want to return a custom offline page here
+            return new Response('Offline');
+          });
+      })
   );
 });

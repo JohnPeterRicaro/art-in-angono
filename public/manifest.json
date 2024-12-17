@@ -5,9 +5,14 @@
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#ffffff",
   "theme_color": "#000000",
-  "orientation": "portrait-primary",
+  "categories": ["art", "culture", "museums", "galleries"],
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
+  "id": "/",
   "icons": [
     {
       "src": "/icons/icon-72x72.png",
@@ -58,13 +63,39 @@
       "purpose": "any maskable"
     }
   ],
-  "prefer_related_applications": false,
-  "categories": ["art", "museums", "travel"],
   "screenshots": [
     {
       "src": "/screenshots/home.png",
       "sizes": "1080x1920",
-      "type": "image/png"
+      "type": "image/png",
+      "form_factor": "narrow",
+      "label": "Home Screen"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Museums",
+      "url": "/museums",
+      "description": "View art museums in Angono",
+      "icons": [
+        {
+          "src": "/icons/icon-96x96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Galleries",
+      "url": "/galleries",
+      "description": "View art galleries in Angono",
+      "icons": [
+        {
+          "src": "/icons/icon-96x96.png",
+          "sizes": "96x96",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }
