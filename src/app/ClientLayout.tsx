@@ -21,35 +21,8 @@ export default function ClientLayout({
       }
     };
 
-    // Register service worker first
     registerServiceWorker();
-
-    // Handle beforeinstallprompt event at the root level
-    const handleInstallPrompt = (e: Event) => {
-      console.log('Root: beforeinstallprompt event captured');
-      e.preventDefault(); // Prevent the mini-infobar but keep the event
-      (window as any).deferredInstallPrompt = e;
-    };
-
-    window.addEventListener('beforeinstallprompt', handleInstallPrompt);
-
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleInstallPrompt);
-    };
   }, []);
-
-  // Defer non-critical scripts
-  const loadNonCriticalScripts = () => {
-    // Add any non-critical script loading here
-  };
-
-  if (typeof window !== 'undefined') {
-    if ('requestIdleCallback' in window) {
-      (window as any).requestIdleCallback(loadNonCriticalScripts);
-    } else {
-      setTimeout(loadNonCriticalScripts, 1000);
-    }
-  }
 
   return <>{children}</>;
 }

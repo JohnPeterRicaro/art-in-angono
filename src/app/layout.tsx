@@ -1,5 +1,6 @@
 import "./globals.css";
 import ClientLayout from "./ClientLayout";
+import "./pwaInit";  // Initialize PWA handler at the root level
 
 export const metadata = {
   title: "Art In Angono",

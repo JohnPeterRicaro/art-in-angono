@@ -1,55 +1,45 @@
-// Global PWA event storage
+// Types
+interface BeforeInstallPromptEvent extends Event {
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+}
+
 declare global {
   interface Window {
-    deferredInstallPrompt: any;
+    deferredInstallPrompt: BeforeInstallPromptEvent | null;
   }
 }
 
-// Initialize the global variable
-if (typeof window !== 'undefined') {
-  window.deferredInstallPrompt = null;
+// Check if PWA is already installed
+export const isPWAInstalled = () => {
+  if (typeof window === 'undefined') return false;
+  
+  // Check if the app is running in standalone mode (installed as PWA)
+  return window.matchMedia('(display-mode: standalone)').matches;
+};
 
-  // Capture the beforeinstallprompt event as early as possible
-  window.addEventListener('beforeinstallprompt', (e) => {
-    console.log('Global: beforeinstallprompt event captured');
-    // Prevent the mini-infobar from appearing on mobile
-    e.preventDefault();
-    // Store the event for later use
-    window.deferredInstallPrompt = e;
-  });
-}
-
-export const triggerInstall = async () => {
+// Trigger the installation prompt
+export const triggerInstall = async (): Promise<boolean> => {
+  console.log("Triggering install...");
+  
   if (!window.deferredInstallPrompt) {
-    console.log('No installation prompt available');
+    console.log("No deferred prompt available");
     return false;
   }
 
   try {
     // Show the prompt
-    const promptEvent = window.deferredInstallPrompt;
-    await promptEvent.prompt();
+    await window.deferredInstallPrompt.prompt();
     
-    // Wait for the user's choice
-    const { outcome } = await promptEvent.userChoice;
-    console.log('Installation outcome:', outcome);
-
+    // Wait for the user to respond to the prompt
+    const choiceResult = await window.deferredInstallPrompt.userChoice;
+    
     // Clear the prompt
     window.deferredInstallPrompt = null;
-
-    return outcome === 'accepted';
-  } catch (error) {
-    console.error('Error installing PWA:', error);
+    
+    return choiceResult.outcome === 'accepted';
+  } catch (err) {
+    console.error('Error during installation:', err);
     return false;
   }
-};
-
-export const isPWAInstalled = () => {
-  if (typeof window === 'undefined') return false;
-  
-  return (
-    window.matchMedia('(display-mode: standalone)').matches ||
-    (navigator as any).standalone ||
-    document.referrer.includes('android-app://')
-  );
 };
