@@ -17,7 +17,7 @@ const PWANotification = () => {
       <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50" />
 
       {/* Modal */}
-      <div className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 z-50 animate-fade-in">
+      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-sm mx-auto bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 z-50 animate-fade-in">
         <div className="flex flex-col items-center text-center">
           <img
             src="/art-in-angono-logo.png"
