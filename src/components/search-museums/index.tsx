@@ -2,6 +2,7 @@ import StarScore from "@/components/star-score";
 import { Button } from "@/components/ui/button";
 import useGetBudget from "@/hooks/useGetBudget";
 import useTrackingContainerStore from "@/hooks/useTrackingContainerStore";
+import { Museums } from "@/modules/ManualMapping";
 import { ScrollArea } from "@radix-ui/react-scroll-area";
 import { Dot, Search, Trash2Icon } from "lucide-react";
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
@@ -11,7 +12,7 @@ interface Props {
   input: string;
   setInput: Dispatch<SetStateAction<string>>;
   isOpen: boolean;
-  filteredMuseums: google.maps.places.PlaceResult[];
+  filteredMuseums: Museums[];
   startMultipleNavigation?: () => any;
 }
 
@@ -23,6 +24,7 @@ const SearchMuseums = ({
   startMultipleNavigation,
 }: Props) => {
   const [museums, setMuseums] = useState<google.maps.places.PlaceResult[]>([]);
+  const [expandedMuseum, setExpandedMuseum] = useState<string | null>(null);
   const { museumsInRoute, setMuseumsInRoute } = useTrackingContainerStore();
 
   const handleMuseumsToRoute = () => {
@@ -79,6 +81,9 @@ const SearchMuseums = ({
             <h1 className={"text-gray-950 font-semibold"}>total budget:</h1>
             <p className={"text-gray-800 font-semibold"}>₱ {museumBugdet}</p>
           </div>
+          <p className={"text-[11.11px] leading-none text-gray-500 italic"}>
+            The budget provided is an estimate and is subject to change.
+          </p>
         </div>
       )}
       {museums.length > 0 && (
@@ -202,7 +207,7 @@ const SearchMuseums = ({
                 <div
                   key={index}
                   className={
-                    "w-full relative h-[131px] border border-gray-200 rounded-[18px]"
+                    "w-full relative h-auto border border-gray-200 rounded-[18px]"
                   }
                 >
                   {museum?.business_status?.toString().toLocaleUpperCase() ===
@@ -217,104 +222,162 @@ const SearchMuseums = ({
                   )}
                   <div
                     className={
-                      "px-[16px] py-[15px] rounded-[18px] flex justify-start items-center gap-[14px]"
+                      "px-[16px] py-[15px] rounded-[18px] flex flex-col justify-start items-stretch gap-[14px]"
                     }
                   >
-                    <img
-                      className={"h-[99px] w-[99px] object-cover rounded-[8px]"}
-                      src={
-                        museum?.photos?.[0]?.getUrl() ||
-                        "/place-holder-place-icon.png"
-                      }
-                      alt={`museum-icon`}
-                    />
-                    <div className={"space-y-[8px]"}>
-                      <h1
+                    <div className="flex justify-start items-center gap-[14px]">
+                      <img
                         className={
-                          "text-start text-[16.66px] leading-[16.66px] font-bold"
+                          "h-[99px] w-[99px] object-cover rounded-[8px]"
                         }
-                      >
-                        {museum?.name}
-                      </h1>
-                      <div className={"space-y-[4px]"}>
-                        <div
+                        src={
+                          museum?.photos?.[0]?.getUrl() ||
+                          "/place-holder-place-icon.png"
+                        }
+                        alt={`museum-icon`}
+                      />
+                      <div className={"space-y-[8px]"}>
+                        <h1
                           className={
-                            "flex justify-start items-center gap-[4px]"
+                            "text-start text-[16.66px] leading-[16.66px] font-bold"
                           }
                         >
-                          <h3
+                          {museum?.name}
+                        </h1>
+                        <div className={"space-y-[4px]"}>
+                          <div
                             className={
-                              "text-[11.11px] leading-[11.11px] text-gray-600 font-semibold"
+                              "flex justify-start items-center gap-[4px]"
                             }
                           >
-                            {museum?.rating || 0}
-                          </h3>
-                          <StarScore score={museum?.rating || 0} sizes={"sm"} />
-                          <p
-                            className={
-                              "text-[8.88px] leading-[8.88px] text-gray-500y-"
-                            }
-                          >
-                            {`(${museum?.user_ratings_total || 0})`}
-                          </p>
-                        </div>
-                        <div
-                          className={
-                            "flex justify-start items-center gap-[2px]"
-                          }
-                        >
-                          <p
-                            className={
-                              "text-start text-[11.11px] leading-[11.11px] text-gray-600 capitalize"
-                            }
-                          >
-                            {museum?.types?.[0] || "Museum"}
-                          </p>
-                          <Dot
-                            size={12}
-                            strokeWidth={2}
-                            className={"text-gray-600"}
-                          />
-                        </div>
-                      </div>
-                      <div
-                        className={"flex justify-start items-center gap-[7px]"}
-                      >
-                        <Button
-                          disabled={museumsInRoute.some(
-                            (m) =>
-                              m.geometry?.location?.lat() ===
-                                museum.geometry?.location?.lat() &&
-                              m.geometry?.location?.lng() ===
-                                museum.geometry?.location?.lng()
-                          )}
-                          onClick={() => {
-                            setMuseums((prev) => {
-                              if (
-                                prev.some(
-                                  (_museum) =>
-                                    _museum.place_id === museum.place_id
-                                ) ||
-                                museumsInRoute.some(
-                                  (_museum) =>
-                                    _museum.place_id === museum.place_id
-                                )
-                              ) {
-                                return prev;
+                            <h3
+                              className={
+                                "text-[11.11px] leading-[11.11px] text-gray-600 font-semibold"
                               }
-                              return [...prev, museum];
-                            });
-                          }}
-                          type={"button"}
-                          variant={"default"}
+                            >
+                              {museum?.rating || 0}
+                            </h3>
+                            <StarScore
+                              score={museum?.rating || 0}
+                              sizes={"sm"}
+                            />
+                            <p
+                              className={
+                                "text-[8.88px] leading-[8.88px] text-gray-500y-"
+                              }
+                            >
+                              {`(${museum?.user_ratings_total || 0})`}
+                            </p>
+                          </div>
+                          <div
+                            className={
+                              "flex justify-start items-center gap-[2px]"
+                            }
+                          >
+                            <p
+                              className={
+                                "text-start text-[11.11px] leading-[11.11px] text-gray-600 capitalize"
+                              }
+                            >
+                              {museum?.types?.[0] || "Museum"}
+                            </p>
+                            <Dot
+                              size={12}
+                              strokeWidth={2}
+                              className={"text-gray-600"}
+                            />
+                          </div>
+                        </div>
+                        <div
                           className={
-                            "h-auto py-[5px] px-[33px] bg-[#0094FF] hover:bg-[#0094FF]/75 rounded-[14.5px] text-white"
+                            "flex justify-start items-center gap-[7px]"
                           }
                         >
-                          Add Museum
-                        </Button>
+                          <Button
+                            disabled={museumsInRoute.some(
+                              (m) =>
+                                m.geometry?.location?.lat() ===
+                                  museum.geometry?.location?.lat() &&
+                                m.geometry?.location?.lng() ===
+                                  museum.geometry?.location?.lng()
+                            )}
+                            onClick={() => {
+                              setMuseums((prev) => {
+                                if (
+                                  prev.some(
+                                    (_museum) =>
+                                      _museum.place_id === museum.place_id
+                                  ) ||
+                                  museumsInRoute.some(
+                                    (_museum) =>
+                                      _museum.place_id === museum.place_id
+                                  )
+                                ) {
+                                  return prev;
+                                }
+                                return [...prev, museum];
+                              });
+                            }}
+                            type={"button"}
+                            variant={"default"}
+                            className={
+                              "h-auto py-[5px] px-[33px] bg-[#0094FF] hover:bg-[#0094FF]/75 rounded-[14.5px] text-white"
+                            }
+                          >
+                            Add Museum
+                          </Button>
+                        </div>
                       </div>
                     </div>
+                    {museum?.description && (
+                      <div className="w-full">
+                        <Button
+                          onClick={() =>
+                            setExpandedMuseum(
+                              expandedMuseum === museum.place_id &&
+                                museum.place_id
+                                ? null
+                                : museum.place_id || null
+                            )
+                          }
+                          type="button"
+                          variant="ghost"
+                          className="w-full flex justify-between items-center py-2 text-gray-600 hover:text-gray-900"
+                        >
+                          <span className="text-sm font-medium">
+                            View Description
+                          </span>
+                          <svg
+                            className={`w-5 h-5 transition-transform ${
+                              expandedMuseum === museum.place_id
+                                ? "rotate-180"
+                                : ""
+                            }`}
+                            fill="none"
+                            stroke="currentColor"
+                            viewBox="0 0 24 24"
+                          >
+                            <path
+                              strokeLinecap="round"
+                              strokeLinejoin="round"
+                              strokeWidth={2}
+                              d="M19 9l-7 7-7-7"
+                            />
+                          </svg>
+                        </Button>
+                        <div
+                          className={`overflow-hidden transition-all duration-300 ${
+                            expandedMuseum === museum.place_id
+                              ? "max-h-[500px] opacity-100"
+                              : "max-h-0 opacity-0"
+                          }`}
+                        >
+                          <p className="px-4 py-3 text-sm text-gray-600 bg-gray-50 rounded-lg mt-2">
+                            {museum.description}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}

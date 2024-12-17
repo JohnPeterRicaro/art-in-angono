@@ -1,8 +1,12 @@
 import SearchMuseums from "@/components/search-museums";
 import { useState } from "react";
 
+export interface Museums extends google.maps.places.PlaceResult {
+  description?: string;
+}
+
 interface Props {
-  angonoMuseums: google.maps.places.PlaceResult[];
+  angonoMuseums: Museums[];
   isOpen: boolean;
   startMultipleNavigation: () => any;
 }

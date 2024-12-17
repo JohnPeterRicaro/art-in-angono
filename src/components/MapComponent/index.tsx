@@ -23,6 +23,7 @@ export interface MuseumWithDistanceAndEta
     eta: number;
     tour_time: number;
   };
+  description?: string;
 }
 
 const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
@@ -295,6 +296,14 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
 
     const hardcodedMuseums = await fetchHardcodedMuseums(google, map);
 
+    const museumsWithDescriptions = await getHardcodedMuseums();
+
+    const hardcodedMuseumsWithDescriptions = hardcodedMuseums.map((museum) => ({
+      ...museum,
+      description: museumsWithDescriptions.find(
+        (m) => m.name.toLowerCase() === museum.name?.toLowerCase()
+      )?.description,
+    }));
     // Custom icon for markers
     const customIcon = {
       url: "/icons/museum-icon.png", // Replace with your custom icon URL
@@ -322,15 +331,22 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
       },
       (results, status) => {
         if (status === google.maps.places.PlacesServiceStatus.OK && results) {
-          const museumsWithinPolygon = results.filter((result) => {
-            if (result.geometry?.location) {
-              return google.maps.geometry.poly.containsLocation(
-                result.geometry.location,
-                angonoPolygon
-              );
-            }
-            return false;
-          });
+          const museumsWithinPolygon = results
+            .filter((result) => {
+              if (result.geometry?.location) {
+                return google.maps.geometry.poly.containsLocation(
+                  result.geometry.location,
+                  angonoPolygon
+                );
+              }
+              return false;
+            })
+            .map((museum) => ({
+              ...museum,
+              description: museumsWithDescriptions.find(
+                (m) => m.name?.toLowerCase() === museum.name?.toLowerCase()
+              )?.description,
+            }));
 
           museumsWithinPolygon.forEach((museum) => {
             if (museum.geometry?.location) {
@@ -345,7 +361,7 @@ const MapComponent: React.FC<MapComponentProps> = ({ google }) => {
 
           setAngonoMuseums([
             ...museumsWithinPolygon,
-            ...hardcodedMuseums,
+            ...hardcodedMuseumsWithDescriptions,
           ] as MuseumWithDistanceAndEta[]);
         } else {
           console.warn("No results found or error fetching museums.");

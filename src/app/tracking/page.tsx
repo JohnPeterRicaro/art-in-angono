@@ -1,7 +1,13 @@
 import TrackingMainPage from "@/modules/TrackingMainPage";
+import PWANotification from "@/components/PWANotification";
 
 const Page = () => {
-  return <TrackingMainPage />;
+  return (
+    <>
+      <PWANotification />
+      <TrackingMainPage />
+    </>
+  );
 };
 
 export default Page;
