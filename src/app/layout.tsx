@@ -1,6 +1,5 @@
 import "./globals.css";
 import ClientLayout from "./ClientLayout";
-import "@/lib/pwaHandler";  // Import PWA handler as early as possible
 
 export const metadata = {
   title: "Art In Angono",

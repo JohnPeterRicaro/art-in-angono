@@ -27,8 +27,7 @@ export default function ClientLayout({
     // Handle beforeinstallprompt event at the root level
     const handleInstallPrompt = (e: Event) => {
       console.log('Root: beforeinstallprompt event captured');
-      // Don't prevent default here to allow the native prompt
-      // Store the event in window for access by other components
+      e.preventDefault(); // Prevent the mini-infobar but keep the event
       (window as any).deferredInstallPrompt = e;
     };
 
