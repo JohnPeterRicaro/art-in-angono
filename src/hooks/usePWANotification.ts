@@ -1,45 +1,90 @@
 "use client";
 
-import { useEffect } from "react";
-
-// Define the BeforeInstallPromptEvent
-interface BeforeInstallPromptEvent extends Event {
-  readonly platforms: string[];
-  readonly userChoice: Promise<{
-    outcome: "accepted" | "dismissed";
-    platform: string;
-  }>;
-  prompt(): Promise<void>;
-}
-
-// Store the deferredPrompt
-let deferredPrompt: BeforeInstallPromptEvent | null = null;
+import { useEffect, useState } from "react";
+import type { BeforeInstallPromptEvent } from "@/types/pwa";
 
 export const usePWANotification = () => {
+  const [showInstallPrompt, setShowInstallPrompt] = useState(false);
+
   useEffect(() => {
-    window.addEventListener("beforeinstallprompt", (e) => {
-      // Prevent the mini-infobar from appearing on mobile
-      e.preventDefault();
-      // Stash the event so it can be triggered later.
-      deferredPrompt = e as BeforeInstallPromptEvent;
-      console.log("beforeinstallprompt fired");
-    });
+    const checkInstallable = async () => {
+      // Check if app is already installed
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches;
+      console.log('Is app in standalone mode?', isStandalone);
+      
+      if (isStandalone) {
+        console.log('App is already installed');
+        setShowInstallPrompt(false);
+        return;
+      }
+    };
+
+    checkInstallable();
+
+    // Listen for beforeinstallprompt
+    const handleBeforeInstallPrompt = (event: BeforeInstallPromptEvent) => {
+      console.log('Prompt available, showing install button');
+      setShowInstallPrompt(true);
+      window.deferredInstallPrompt = event;
+    };
+
+    // Listen for successful installation
+    const handleAppInstalled = () => {
+      console.log('App was installed');
+      setShowInstallPrompt(false);
+      window.deferredInstallPrompt = null;
+    };
+
+    // Check if we already have a deferred prompt
+    if (window.deferredInstallPrompt) {
+      handleBeforeInstallPrompt(window.deferredInstallPrompt);
+    }
+
+    window.addEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+    window.addEventListener('appinstalled', handleAppInstalled);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handleBeforeInstallPrompt);
+      window.removeEventListener('appinstalled', handleAppInstalled);
+    };
   }, []);
 
   const handleInstall = async () => {
-    if (!deferredPrompt) {
+    console.log('Install button clicked');
+    
+    if (!window.deferredInstallPrompt) {
       console.log("No installation prompt available");
       return;
     }
 
-    // Show the install prompt
-    deferredPrompt.prompt();
-    // Wait for the user to respond to the prompt
-    // We've used the prompt, and can't use it again, clear it
-    deferredPrompt = null;
+    try {
+      // Show the install prompt
+      await window.deferredInstallPrompt.prompt();
+      const result = await window.deferredInstallPrompt.userChoice;
+      console.log('User choice:', result.outcome);
+      
+      if (result.outcome === 'accepted') {
+        console.log('User accepted the install prompt');
+      } else {
+        console.log('User dismissed the install prompt');
+      }
+      
+      // Clear the prompt
+      window.deferredInstallPrompt = null;
+      setShowInstallPrompt(false);
+    } catch (err) {
+      console.error('Installation error:', err);
+    }
   };
 
-  const dismissNotification = () => {};
+  const dismissNotification = () => {
+    console.log('User dismissed the install notification');
+    setShowInstallPrompt(false);
+  };
 
-  return { handleInstall, dismissNotification };
+  return { 
+    showInstallPrompt,
+    handleInstall, 
+    dismissNotification 
+  };
 };

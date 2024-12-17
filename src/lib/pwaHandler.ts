@@ -1,10 +1,6 @@
-export {};
+"use client";
 
-// Types for PWA installation
-interface BeforeInstallPromptEvent extends Event {
-  prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
-}
+import type { BeforeInstallPromptEvent } from "@/types/pwa";
 
 declare global {
   interface Window {
@@ -12,14 +8,38 @@ declare global {
   }
 }
 
-// Initialize
+// Initialize PWA handler
 if (typeof window !== 'undefined') {
-  window.deferredInstallPrompt = null;
+  console.log('Initializing PWA handler');
   
-  window.addEventListener('beforeinstallprompt', (e) => {
-    console.log('Install prompt event captured');
+  // Initialize the global variable
+  window.deferredInstallPrompt = null;
+
+  // Register service worker
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', async () => {
+      try {
+        const registration = await navigator.serviceWorker.register('/service-worker.js');
+        console.log('Service Worker registered with scope:', registration.scope);
+      } catch (error) {
+        console.error('Service Worker registration failed:', error);
+      }
+    });
+  }
+
+  // Listen for beforeinstallprompt
+  window.addEventListener('beforeinstallprompt', (e: Event) => {
+    console.log('Received beforeinstallprompt event');
+    // Prevent Chrome 67 and earlier from automatically showing the prompt
     e.preventDefault();
+    // Stash the event so it can be triggered later
     window.deferredInstallPrompt = e as BeforeInstallPromptEvent;
+  });
+
+  // Listen for successful installation
+  window.addEventListener('appinstalled', () => {
+    console.log('PWA was installed');
+    window.deferredInstallPrompt = null;
   });
 }
 
