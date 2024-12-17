@@ -1,6 +1,6 @@
 import "./globals.css";
 import ClientLayout from "./ClientLayout";
-import InstallPWA from "@/components/InstallPWA";
+import PWANotification from "@/components/PWANotification";
 import "@/lib/pwaHandler";  // Initialize PWA handler
 
 export const metadata = {
@@ -18,7 +18,7 @@ export default function RootLayout({
       <body>
         <ClientLayout>
           {children}
-          <InstallPWA />
+          <PWANotification />
         </ClientLayout>
       </body>
     </html>

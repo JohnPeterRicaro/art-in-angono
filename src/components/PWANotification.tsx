@@ -4,12 +4,7 @@ import { usePWANotification } from "@/hooks/usePWANotification";
 import { X } from "lucide-react";
 
 const PWANotification = () => {
-  const { showNotification, handleInstall, dismissNotification } =
-    usePWANotification();
-
-  if (!showNotification) {
-    return null;
-  }
+  const { handleInstall, dismissNotification } = usePWANotification();
 
   return (
     <>
